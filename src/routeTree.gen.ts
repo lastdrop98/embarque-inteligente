@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedMotoristaRouteImport } from './routes/_authenticated/motorista'
 import { Route as AuthenticatedOperadorRouteImport } from './routes/_authenticated/operador'
+import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as PTokenRouteImport } from './routes/p.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,9 +31,19 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedMotoristaRoute = AuthenticatedMotoristaRouteImport.update({
+  id: '/motorista',
+  path: '/motorista',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedOperadorRoute = AuthenticatedOperadorRouteImport.update({
   id: '/operador',
   path: '/operador',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPainelRoute = AuthenticatedPainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const PTokenRoute = PTokenRouteImport.update({
@@ -43,13 +55,17 @@ const PTokenRoute = PTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/motorista': typeof AuthenticatedMotoristaRoute
   '/operador': typeof AuthenticatedOperadorRoute
+  '/painel': typeof AuthenticatedPainelRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/motorista': typeof AuthenticatedMotoristaRoute
   '/operador': typeof AuthenticatedOperadorRoute
+  '/painel': typeof AuthenticatedPainelRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRoutesById {
@@ -57,20 +73,25 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/motorista': typeof AuthenticatedMotoristaRoute
   '/_authenticated/operador': typeof AuthenticatedOperadorRoute
+  '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/operador' | '/p/$token'
+  fullPaths:
+    '/' | '/auth' | '/motorista' | '/operador' | '/painel' | '/p/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/operador' | '/p/$token'
+  to: '/' | '/auth' | '/motorista' | '/operador' | '/painel' | '/p/$token'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/motorista'
     | '/_authenticated/operador'
+    | '/_authenticated/painel'
     | '/p/$token'
   fileRoutesById: FileRoutesById
 }
@@ -104,11 +125,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/motorista': {
+      id: '/_authenticated/motorista'
+      path: '/motorista'
+      fullPath: '/motorista'
+      preLoaderRoute: typeof AuthenticatedMotoristaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/operador': {
       id: '/_authenticated/operador'
       path: '/operador'
       fullPath: '/operador'
       preLoaderRoute: typeof AuthenticatedOperadorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel': {
+      id: '/_authenticated/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof AuthenticatedPainelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/p/$token': {
@@ -122,11 +157,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedMotoristaRoute: typeof AuthenticatedMotoristaRoute
   AuthenticatedOperadorRoute: typeof AuthenticatedOperadorRoute
+  AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedMotoristaRoute: AuthenticatedMotoristaRoute,
   AuthenticatedOperadorRoute: AuthenticatedOperadorRoute,
+  AuthenticatedPainelRoute: AuthenticatedPainelRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
