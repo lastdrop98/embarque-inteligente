@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,21 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+function traduzErro(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid login credentials")) return "Email ou palavra-passe incorrectos.";
+  if (m.includes("email not confirmed")) return "Email ainda não confirmado. Verifica a tua caixa de entrada (ou pede a um operador para desactivar a confirmação de email nas definições do Supabase).";
+  if (m.includes("user already registered")) return "Já existe uma conta com este email. Tenta entrar em vez de criar conta.";
+  if (m.includes("password should be at least")) return "A palavra-passe deve ter pelo menos 6 caracteres.";
+  if (m.includes("unable to validate email")) return "Endereço de email inválido.";
+  if (m.includes("database error")) return "Erro na base de dados ao criar a conta. Contacta o suporte técnico.";
+  if (m.includes("failed to fetch") || m.includes("networkerror")) return "Falha de ligação ao servidor. Verifica a tua internet e tenta novamente.";
+  return msg;
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
@@ -30,25 +43,76 @@ function AuthPage() {
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    navigate({ to: "/painel" });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        console.error("[auth] signIn error:", error);
+        toast.error(traduzErro(error.message));
+        return;
+      }
+      if (!data.session) {
+        toast.error("Não foi possível iniciar sessão. Tenta novamente.");
+        return;
+      }
+      await router.invalidate();
+      navigate({ to: "/painel", replace: true });
+    } catch (err) {
+      console.error("[auth] signIn exception:", err);
+      toast.error("Ocorreu um erro inesperado ao entrar. Tenta novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function registar(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin, data: { nome, papel } },
-    });
-    setLoading(false);
-    if (error) return toast.error(error.message);
-    if (!data.session) return toast.success("Conta criada. Confirme o email para entrar.");
-    navigate({ to: "/painel" });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + "/auth",
+          data: { nome, papel },
+        },
+      });
+      if (error) {
+        console.error("[auth] signUp error:", error);
+        toast.error(traduzErro(error.message));
+        return;
+      }
+      if (!data.session) {
+        // Sem sessão logo após o registo normalmente significa que a confirmação
+        // de email está activa no Supabase. Tentamos entrar de imediato — se a
+        // conta não precisar mesmo de confirmação, isto resolve sozinho.
+        const tentativa = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (tentativa.data.session) {
+          await router.invalidate();
+          navigate({ to: "/painel", replace: true });
+          return;
+        }
+        toast.success(
+          "Conta criada. Se não conseguires entrar agora, é preciso confirmar o email ou desactivar essa exigência nas definições do Supabase."
+        );
+        return;
+      }
+      await router.invalidate();
+      navigate({ to: "/painel", replace: true });
+    } catch (err) {
+      console.error("[auth] signUp exception:", err);
+      toast.error("Ocorreu um erro inesperado ao criar a conta. Tenta novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -80,7 +144,7 @@ function AuthPage() {
                     <Input id="pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    Entrar
+                    {loading ? "A entrar..." : "Entrar"}
                   </Button>
                 </form>
               </TabsContent>
@@ -115,7 +179,7 @@ function AuthPage() {
                     </div>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    Criar conta
+                    {loading ? "A criar..." : "Criar conta"}
                   </Button>
                 </form>
               </TabsContent>
