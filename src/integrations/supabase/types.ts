@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -46,7 +44,31 @@ export type Database = {
           },
         ]
       }
-                  incidentes: {
+      delegacoes: {
+        Row: {
+          contacto: string | null
+          created_at: string
+          id: string
+          nome: string
+          tipo: string | null
+        }
+        Insert: {
+          contacto?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          tipo?: string | null
+        }
+        Update: {
+          contacto?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo?: string | null
+        }
+        Relationships: []
+      }
+      incidentes: {
         Row: {
           created_at: string
           descricao: string
@@ -172,27 +194,41 @@ export type Database = {
       }
       passageiros: {
         Row: {
+          categoria: Database["public"]["Enums"]["categoria_passageiro"]
           contacto: string
           created_at: string
+          delegacao_id: string | null
           id: string
           nome: string
           user_id: string | null
         }
         Insert: {
+          categoria?: Database["public"]["Enums"]["categoria_passageiro"]
           contacto?: string
           created_at?: string
+          delegacao_id?: string | null
           id?: string
           nome: string
           user_id?: string | null
         }
         Update: {
+          categoria?: Database["public"]["Enums"]["categoria_passageiro"]
           contacto?: string
           created_at?: string
+          delegacao_id?: string | null
           id?: string
           nome?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "passageiros_delegacao_id_fkey"
+            columns: ["delegacao_id"]
+            isOneToOne: false
+            referencedRelation: "delegacoes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       perfis: {
         Row: {
@@ -205,7 +241,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           created_at?: string
-          email?: string
+          email: string
           id: string
           nome?: string
         }
@@ -296,29 +332,41 @@ export type Database = {
       rotas: {
         Row: {
           created_at: string
+          estado: Database["public"]["Enums"]["estado_rota"]
+          hora_chegada_real: string | null
           hora_fim: string | null
           hora_inicio: string | null
+          hora_partida_real: string | null
           id: string
           motorista_id: string | null
           nome: string
+          passageiros_previstos: number | null
           veiculo_id: string | null
         }
         Insert: {
           created_at?: string
+          estado?: Database["public"]["Enums"]["estado_rota"]
+          hora_chegada_real?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
+          hora_partida_real?: string | null
           id?: string
           motorista_id?: string | null
           nome: string
+          passageiros_previstos?: number | null
           veiculo_id?: string | null
         }
         Update: {
           created_at?: string
+          estado?: Database["public"]["Enums"]["estado_rota"]
+          hora_chegada_real?: string | null
           hora_fim?: string | null
           hora_inicio?: string | null
+          hora_partida_real?: string | null
           id?: string
           motorista_id?: string | null
           nome?: string
+          passageiros_previstos?: number | null
           veiculo_id?: string | null
         }
         Relationships: [
@@ -447,7 +495,33 @@ export type Database = {
     }
     Enums: {
       app_role: "operador" | "motorista" | "admin" | "passageiro"
-      estado_viagem: "pendente" | "a_bordo" | "concluida" | "recusada"
+      categoria_passageiro:
+        | "atleta"
+        | "coach"
+        | "official"
+        | "media"
+        | "sponsor"
+        | "guest"
+        | "vip"
+        | "staff"
+        | "voluntario"
+        | "arbitro"
+        | "independente"
+      estado_rota:
+        | "rascunho"
+        | "agendada"
+        | "embarque_aberto"
+        | "embarque_fechado"
+        | "em_curso"
+        | "concluida"
+        | "cancelada"
+      estado_viagem:
+        | "pendente"
+        | "a_bordo"
+        | "desembarcado"
+        | "concluida"
+        | "recusada"
+        | "nao_compareceu"
       resultado_registo: "aprovado" | "recusado"
       tipo_registo: "embarque" | "desembarque"
     }
@@ -461,7 +535,7 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Tables<
+export type Tables
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
@@ -490,7 +564,7 @@ export type Tables<
       : never
     : never
 
-export type TablesInsert<
+export type TablesInsert
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -515,7 +589,7 @@ export type TablesInsert<
       : never
     : never
 
-export type TablesUpdate<
+export type TablesUpdate
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -540,7 +614,7 @@ export type TablesUpdate<
       : never
     : never
 
-export type Enums<
+export type Enums
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -557,7 +631,7 @@ export type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-export type CompositeTypes<
+export type CompositeTypes
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -578,7 +652,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["operador", "motorista", "admin", "passageiro"],
-      estado_viagem: ["pendente", "a_bordo", "concluida", "recusada"],
+      categoria_passageiro: [
+        "atleta", "coach", "official", "media", "sponsor",
+        "guest", "vip", "staff", "voluntario", "arbitro", "independente",
+      ],
+      estado_rota: [
+        "rascunho", "agendada", "embarque_aberto",
+        "embarque_fechado", "em_curso", "concluida", "cancelada",
+      ],
+      estado_viagem: ["pendente", "a_bordo", "desembarcado", "concluida", "recusada", "nao_compareceu"],
       resultado_registo: ["aprovado", "recusado"],
       tipo_registo: ["embarque", "desembarque"],
     },
