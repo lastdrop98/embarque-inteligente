@@ -1,101 +1,199 @@
-import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useSessao, type Papel } from "@/lib/useSessao";
-import { SinoNotificacoes } from "@/components/SinoNotificacoes";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
-  },
-  component: Layout,
+export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Entrar — Rotas & Embarque QR" },
+      { name: "description", content: "Acesso de operadores, motoristas e passageiros ao centro de mobilidade." },
+      { property: "og:title", content: "Entrar — Rotas & Embarque QR" },
+      { property: "og:description", content: "Acesso de operadores, motoristas e passageiros ao centro de mobilidade." },
+    ],
+  }),
+  component: AuthPage,
 });
 
-type Rota = "/painel" | "/operador" | "/motorista" | "/admin" | "/passageiro";
+const PAPEIS_REGISTO = ["operador", "motorista", "passageiro"] as const;
+type PapelRegisto = (typeof PAPEIS_REGISTO)[number];
 
-const LINKS_POR_PAPEL: Record<Papel, { to: Rota; label: string }[]> = {
-  admin: [
-    { to: "/admin", label: "Admin" },
-    { to: "/painel", label: "Painel" },
-    { to: "/operador", label: "Operador" },
-    { to: "/motorista", label: "Motorista" },
-  ],
-  operador: [
-    { to: "/painel", label: "Painel" },
-    { to: "/operador", label: "Operador" },
-  ],
-  motorista: [
-    { to: "/painel", label: "Painel" },
-    { to: "/motorista", label: "Motorista" },
-  ],
-  passageiro: [{ to: "/passageiro", label: "Os meus bilhetes" }],
+const ROTA_POR_PAPEL: Record<PapelRegisto, string> = {
+  operador: "/painel",
+  motorista: "/painel",
+  passageiro: "/passageiro",
 };
 
-function Layout() {
-  const { data, isLoading } = useSessao();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  async function sair() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
-
-  const links = data?.papel ? LINKS_POR_PAPEL[data.papel] : [];
-  const suspenso = !isLoading && data && data.activo === false;
-
-  return (
-    <div className="min-h-screen bg-secondary">
-      <header className="bg-sidebar text-sidebar-foreground">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-          <Link to="/" className="font-semibold tracking-tight">
-            Rotas &amp; Embarque QR
-          </Link>
-          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
-            {links.map((l) => (
-              <NavLink key={l.to} to={l.to}>
-                {l.label}
-              </NavLink>
-            ))}
-          </nav>
-          <span className="text-xs opacity-70">{data?.papel}</span>
-          {data?.user?.id && <SinoNotificacoes userId={data.user.id} />}
-          <Button size="sm" variant="secondary" onClick={sair}>
-            Sair
-          </Button>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {suspenso ? (
-          <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
-            <h1 className="text-lg font-semibold text-destructive">Conta suspensa</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              O acesso a esta conta foi suspenso por um administrador. Contacta o suporte se achares que isto é um
-              engano.
-            </p>
-          </div>
-        ) : (
-          <Outlet />
-        )}
-      </main>
-    </div>
-  );
+function traduzErro(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid login credentials")) return "Email ou palavra-passe incorrectos.";
+  if (m.includes("email not confirmed")) return "Email ainda não confirmado. Verifica a tua caixa de entrada (ou pede a um operador para desactivar a confirmação de email nas definições do Supabase).";
+  if (m.includes("user already registered")) return "Já existe uma conta com este email. Tenta entrar em vez de criar conta.";
+  if (m.includes("password should be at least")) return "A palavra-passe deve ter pelo menos 6 caracteres.";
+  if (m.includes("unable to validate email")) return "Endereço de email inválido.";
+  if (m.includes("database error")) return "Erro na base de dados ao criar a conta. Contacta o suporte técnico.";
+  if (m.includes("failed to fetch") || m.includes("networkerror")) return "Falha de ligação ao servidor. Verifica a tua internet e tenta novamente.";
+  return msg;
 }
 
-function NavLink({ to, children }: { to: Rota; children: React.ReactNode }) {
+function AuthPage() {
+  const navigate = useNavigate();
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nome, setNome] = useState("");
+  const [papel, setPapel] = useState<PapelRegisto>("operador");
+  const [loading, setLoading] = useState(false);
+
+  async function entrar(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        console.error("[auth] signIn error:", error);
+        toast.error(traduzErro(error.message));
+        return;
+      }
+      if (!data.session) {
+        toast.error("Não foi possível iniciar sessão. Tenta novamente.");
+        return;
+      }
+      await router.invalidate();
+      navigate({ to: "/painel", replace: true });
+    } catch (err) {
+      console.error("[auth] signIn exception:", err);
+      toast.error("Ocorreu um erro inesperado ao entrar. Tenta novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function registar(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + "/auth",
+          data: { nome, papel },
+        },
+      });
+      if (error) {
+        console.error("[auth] signUp error:", error);
+        toast.error(traduzErro(error.message));
+        return;
+      }
+      const destino = ROTA_POR_PAPEL[papel];
+      if (!data.session) {
+        const tentativa = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (tentativa.data.session) {
+          await router.invalidate();
+          navigate({ to: destino, replace: true });
+          return;
+        }
+        toast.success(
+          "Conta criada. Se não conseguires entrar agora, é preciso confirmar o email ou desactivar essa exigência nas definições do Supabase."
+        );
+        return;
+      }
+      await router.invalidate();
+      navigate({ to: destino, replace: true });
+    } catch (err) {
+      console.error("[auth] signUp exception:", err);
+      toast.error("Ocorreu um erro inesperado ao criar a conta. Tenta novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <Link
-      to={to}
-      className="rounded-md px-3 py-1.5 transition-colors hover:bg-sidebar-accent"
-      activeProps={{ className: "bg-sidebar-accent rounded-md px-3 py-1.5" }}
-    >
-      {children}
-    </Link>
+    <main className="flex min-h-screen items-center justify-center bg-secondary px-4 py-12">
+      <div className="w-full max-w-md">
+        <Link to="/" className="mb-6 block text-center text-sm text-muted-foreground hover:text-foreground">
+          ← Rotas &amp; Embarque QR
+        </Link>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle>Acesso à plataforma</CardTitle>
+            <CardDescription>Operadores, motoristas e passageiros.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="entrar">
+              <TabsList className="mb-4 grid w-full grid-cols-2">
+                <TabsTrigger value="entrar">Entrar</TabsTrigger>
+                <TabsTrigger value="registar">Criar conta</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="entrar">
+                <form onSubmit={entrar} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pw">Palavra-passe</Label>
+                    <Input id="pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "A entrar..." : "Entrar"}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="registar">
+                <form onSubmit={registar} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome</Label>
+                    <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email2">Email</Label>
+                    <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pw2">Palavra-passe</Label>
+                    <Input id="pw2" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Papel</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PAPEIS_REGISTO.map((p) => (
+                        <Button
+                          key={p}
+                          type="button"
+                          variant={papel === p ? "default" : "outline"}
+                          onClick={() => setPapel(p)}
+                        >
+                          {p === "operador" ? "Operador" : p === "motorista" ? "Motorista" : "Passageiro"}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "A criar..." : "Criar conta"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </main>
   );
 }
