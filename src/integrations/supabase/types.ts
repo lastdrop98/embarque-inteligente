@@ -14,6 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
+      avaliacoes: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          nota: number
+          viagem_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota: number
+          viagem_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota?: number
+          viagem_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_viagem_id_fkey"
+            columns: ["viagem_id"]
+            isOneToOne: true
+            referencedRelation: "viagens_passageiro"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      incidentes: {
+        Row: {
+          created_at: string
+          descricao: string
+          estado: string
+          id: string
+          motorista_id: string | null
+          rota_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          estado?: string
+          id?: string
+          motorista_id?: string | null
+          rota_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          estado?: string
+          id?: string
+          motorista_id?: string | null
+          rota_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidentes_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean
+          mensagem: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem: string
+          tipo?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       papeis_utilizador: {
         Row: {
           id: string
@@ -79,39 +173,72 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          user_id: string | null
         }
         Insert: {
           contacto?: string
           created_at?: string
           id?: string
           nome: string
+          user_id?: string | null
         }
         Update: {
           contacto?: string
           created_at?: string
           id?: string
           nome?: string
+          user_id?: string | null
         }
         Relationships: []
       }
       perfis: {
         Row: {
+          activo: boolean
           created_at: string
           email: string
           id: string
           nome: string
         }
         Insert: {
+          activo?: boolean
           created_at?: string
           email?: string
           id: string
           nome?: string
         }
         Update: {
+          activo?: boolean
           created_at?: string
           email?: string
           id?: string
           nome?: string
+        }
+        Relationships: []
+      }
+      registo_auditoria: {
+        Row: {
+          alterado_por: string | null
+          created_at: string
+          id: string
+          papel_anterior: Database["public"]["Enums"]["app_role"] | null
+          papel_novo: Database["public"]["Enums"]["app_role"] | null
+          utilizador_alvo: string
+        }
+        Insert: {
+          alterado_por?: string | null
+          created_at?: string
+          id?: string
+          papel_anterior?: Database["public"]["Enums"]["app_role"] | null
+          papel_novo?: Database["public"]["Enums"]["app_role"] | null
+          utilizador_alvo: string
+        }
+        Update: {
+          alterado_por?: string | null
+          created_at?: string
+          id?: string
+          papel_anterior?: Database["public"]["Enums"]["app_role"] | null
+          papel_novo?: Database["public"]["Enums"]["app_role"] | null
+          utilizador_alvo?: string
         }
         Relationships: []
       }
@@ -204,24 +331,36 @@ export type Database = {
       veiculos: {
         Row: {
           created_at: string
+          estado: string
           id: string
+          latitude: number | null
+          longitude: number | null
           lugares: number
           matricula: string
           nome: string
+          posicao_updated_at: string | null
         }
         Insert: {
           created_at?: string
+          estado?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           lugares?: number
           matricula?: string
           nome: string
+          posicao_updated_at?: string | null
         }
         Update: {
           created_at?: string
+          estado?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           lugares?: number
           matricula?: string
           nome?: string
+          posicao_updated_at?: string | null
         }
         Relationships: []
       }
@@ -292,6 +431,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      conta_activa: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -299,6 +439,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      pode_gerir_rota: { Args: { _rota_id: string }; Returns: boolean }
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
     }
     Enums: {
