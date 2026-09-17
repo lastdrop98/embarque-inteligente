@@ -139,9 +139,6 @@ export default function MapaVeiculos({
           </Marker>
         ))}
       </MapContainer>
-      {!pontos.length && (
-        <p className="p-2 text-xs text-muted-foreground">Sem posições conhecidas para mostrar.</p>
-      )}
     </div>
   );
 }
