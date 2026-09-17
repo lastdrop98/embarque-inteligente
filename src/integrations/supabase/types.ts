@@ -302,7 +302,7 @@ export type Database = {
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "operador" | "motorista"
+      app_role: "operador" | "motorista" | "admin" | "passageiro"
       estado_viagem: "pendente" | "a_bordo" | "concluida" | "recusada"
       resultado_registo: "aprovado" | "recusado"
       tipo_registo: "embarque" | "desembarque"
@@ -433,7 +433,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["operador", "motorista"],
+      app_role: ["operador", "motorista", "admin", "passageiro"],
       estado_viagem: ["pendente", "a_bordo", "concluida", "recusada"],
       resultado_registo: ["aprovado", "recusado"],
       tipo_registo: ["embarque", "desembarque"],
