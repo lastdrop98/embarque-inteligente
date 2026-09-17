@@ -36,14 +36,16 @@ function OperadorPage() {
         <p className="text-sm text-muted-foreground">Rotas, paragens, passageiros e bilhetes QR.</p>
       </div>
       <Tabs defaultValue="rotas">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="rotas">Rotas</TabsTrigger>
           <TabsTrigger value="veiculos">Veículos</TabsTrigger>
+          <TabsTrigger value="delegacoes">Delegações</TabsTrigger>
           <TabsTrigger value="passageiros">Passageiros</TabsTrigger>
           <TabsTrigger value="viagens">Atribuições</TabsTrigger>
         </TabsList>
         <TabsContent value="rotas" className="mt-6"><Rotas /></TabsContent>
         <TabsContent value="veiculos" className="mt-6"><Veiculos /></TabsContent>
+        <TabsContent value="delegacoes" className="mt-6"><Delegacoes /></TabsContent>
         <TabsContent value="passageiros" className="mt-6"><Passageiros /></TabsContent>
         <TabsContent value="viagens" className="mt-6"><Viagens /></TabsContent>
       </Tabs>
@@ -111,7 +113,88 @@ function Veiculos() {
   );
 }
 
+/* ---------------- Delegações ---------------- */
+
+function useDelegacoes() {
+  return useQuery({
+    queryKey: ["delegacoes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("delegacoes").select("*").order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+function Delegacoes() {
+  const { data } = useDelegacoes();
+  const invalidate = useInvalidate();
+  const [nome, setNome] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [contacto, setContacto] = useState("");
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("delegacoes").insert({ nome, tipo: tipo || null, contacto: contacto || null });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Delegação criada");
+      setNome("");
+      setTipo("");
+      setContacto("");
+      invalidate("delegacoes", "passageiros");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <Card>
+        <CardHeader><CardTitle>Nova delegação</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Angola" /></div>
+          <div className="space-y-2"><Label>Tipo</Label><Input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Ex: país, equipa, organização" /></div>
+          <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
+          <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar delegação</Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>Delegações</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {data?.length ? data.map((d) => (
+            <div key={d.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+              <span>{d.nome} {d.tipo && <span className="text-muted-foreground">· {d.tipo}</span>}</span>
+              {d.contacto && <span className="text-muted-foreground">{d.contacto}</span>}
+            </div>
+          )) : <p className="text-sm text-muted-foreground">Ainda não há delegações.</p>}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 /* ---------------- Rotas + paragens ---------------- */
+
+const ESTADOS_ROTA: Record<string, string> = {
+  rascunho: "Rascunho",
+  agendada: "Agendada",
+  embarque_aberto: "Embarque aberto",
+  embarque_fechado: "Embarque fechado",
+  em_curso: "Em curso",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+};
+
+const COR_ESTADO_ROTA: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  rascunho: "outline",
+  agendada: "secondary",
+  embarque_aberto: "default",
+  embarque_fechado: "secondary",
+  em_curso: "default",
+  concluida: "secondary",
+  cancelada: "destructive",
+};
 
 function useRotas() {
   return useQuery({
@@ -147,6 +230,7 @@ function Rotas() {
   const [motoristaId, setMotoristaId] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
+  const [previstos, setPrevistos] = useState("");
 
   const criar = useMutation({
     mutationFn: async () => {
@@ -156,10 +240,11 @@ function Rotas() {
         motorista_id: motoristaId || null,
         hora_inicio: inicio || null,
         hora_fim: fim || null,
+        passageiros_previstos: previstos ? Number(previstos) : null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Rota criada"); setNome(""); invalidate("rotas"); },
+    onSuccess: () => { toast.success("Rota criada"); setNome(""); setPrevistos(""); invalidate("rotas"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -167,7 +252,7 @@ function Rotas() {
     <div className="space-y-6">
       <Card>
         <CardHeader><CardTitle>Nova rota</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-5">
+        <CardContent className="grid gap-4 md:grid-cols-6">
           <div className="space-y-2 md:col-span-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
           <div className="space-y-2">
             <Label>Veículo</Label>
@@ -187,7 +272,8 @@ function Rotas() {
             <div className="space-y-2"><Label>Início</Label><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
             <div className="space-y-2"><Label>Fim</Label><Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
           </div>
-          <div className="md:col-span-5">
+          <div className="space-y-2"><Label>Passageiros previstos</Label><Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} /></div>
+          <div className="md:col-span-6">
             <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar rota</Button>
           </div>
         </CardContent>
@@ -205,6 +291,8 @@ type RotaRow = {
   nome: string;
   hora_inicio: string | null;
   hora_fim: string | null;
+  estado: string;
+  passageiros_previstos: number | null;
   veiculos: { nome: string; lugares: number } | null;
   paragens: Paragem[];
 };
@@ -233,6 +321,15 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const mudarEstado = useMutation({
+    mutationFn: async (novoEstado: string) => {
+      const { error } = await supabase.from("rotas").update({ estado: novoEstado }).eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Estado da rota actualizado"); invalidate("rotas"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -240,6 +337,17 @@ function RotaCard({ rota }: { rota: RotaRow }) {
           {rota.nome}
           {rota.veiculos && <Badge variant="secondary">{rota.veiculos.nome}</Badge>}
           {rota.hora_inicio && <span className="text-xs font-normal text-muted-foreground">{rota.hora_inicio.slice(0, 5)}–{rota.hora_fim?.slice(0, 5) ?? ""}</span>}
+          <Badge variant={COR_ESTADO_ROTA[rota.estado] ?? "outline"}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</Badge>
+          <select
+            className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
+            value={rota.estado}
+            disabled={mudarEstado.isPending}
+            onChange={(e) => mudarEstado.mutate(e.target.value)}
+          >
+            {Object.entries(ESTADOS_ROTA).map(([valor, rotulo]) => (
+              <option key={valor} value={valor}>{rotulo}</option>
+            ))}
+          </select>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -283,11 +391,25 @@ function RotaCard({ rota }: { rota: RotaRow }) {
 
 /* ---------------- Passageiros ---------------- */
 
+const CATEGORIAS: Record<string, string> = {
+  atleta: "Atleta",
+  coach: "Coach",
+  official: "Official",
+  media: "Media",
+  sponsor: "Sponsor",
+  guest: "Guest",
+  vip: "VIP",
+  staff: "Staff",
+  voluntario: "Voluntário",
+  arbitro: "Árbitro",
+  independente: "Independente",
+};
+
 function usePassageiros() {
   return useQuery({
     queryKey: ["passageiros"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("passageiros").select("*").order("nome");
+      const { data, error } = await supabase.from("passageiros").select("*, delegacoes(nome)").order("nome");
       if (error) throw error;
       return data;
     },
@@ -296,16 +418,31 @@ function usePassageiros() {
 
 function Passageiros() {
   const { data } = usePassageiros();
+  const { data: delegacoes } = useDelegacoes();
   const invalidate = useInvalidate();
   const [nome, setNome] = useState("");
   const [contacto, setContacto] = useState("");
+  const [categoria, setCategoria] = useState("independente");
+  const [delegacaoId, setDelegacaoId] = useState("");
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("passageiros").insert({ nome, contacto });
+      const { error } = await supabase.from("passageiros").insert({
+        nome,
+        contacto,
+        categoria,
+        delegacao_id: delegacaoId || null,
+      });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Passageiro criado"); setNome(""); setContacto(""); invalidate("passageiros"); },
+    onSuccess: () => {
+      toast.success("Passageiro criado");
+      setNome("");
+      setContacto("");
+      setCategoria("independente");
+      setDelegacaoId("");
+      invalidate("passageiros");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -316,6 +453,19 @@ function Passageiros() {
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
           <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
+          <div className="space-y-2">
+            <Label>Categoria</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+              {Object.entries(CATEGORIAS).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Delegação (opcional — deixa em branco para independente)</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={delegacaoId} onChange={(e) => setDelegacaoId(e.target.value)}>
+              <option value="">— sem delegação —</option>
+              {delegacoes?.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
+            </select>
+          </div>
           <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar passageiro</Button>
         </CardContent>
       </Card>
@@ -323,9 +473,15 @@ function Passageiros() {
         <CardHeader><CardTitle>Passageiros</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
               <span>{p.nome}</span>
-              <span className="text-muted-foreground">{p.contacto}</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{CATEGORIAS[p.categoria] ?? p.categoria}</Badge>
+                {(p.delegacoes as { nome: string } | null)?.nome && (
+                  <Badge variant="secondary">{(p.delegacoes as { nome: string }).nome}</Badge>
+                )}
+                <span className="text-muted-foreground">{p.contacto}</span>
+              </div>
             </div>
           )) : <p className="text-sm text-muted-foreground">Ainda não há passageiros.</p>}
         </CardContent>
@@ -337,7 +493,12 @@ function Passageiros() {
 /* ---------------- Atribuições / bilhetes ---------------- */
 
 const ESTADOS: Record<string, string> = {
-  pendente: "Pendente", a_bordo: "A bordo", concluida: "Concluída", recusada: "Recusada",
+  pendente: "Pendente",
+  a_bordo: "A bordo",
+  desembarcado: "Desembarcado",
+  concluida: "Concluída",
+  recusada: "Recusada",
+  nao_compareceu: "Não compareceu",
 };
 
 function Viagens() {
@@ -437,8 +598,3 @@ function Viagens() {
               </div>
             );
           }) : <p className="text-sm text-muted-foreground">Ainda não há bilhetes.</p>}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
