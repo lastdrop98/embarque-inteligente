@@ -21,6 +21,10 @@ export type PosParagem = {
   destaque?: boolean;
 };
 
+type Ponto = [number, number];
+
+const CENTRO_OMISSAO: Ponto = [-25.9655, 32.5832]; // Maputo
+
 const CORES: Record<string, string> = {
   em_rota: "hsl(142 72% 35%)",
   incidente: "hsl(0 72% 45%)",
@@ -47,12 +51,13 @@ function iconeParagem(ordem: number, destaque?: boolean) {
   });
 }
 
-function AjustarVista({ pontos }: { pontos: [number, number][] }) {
+function AjustarVista({ pontos }: { pontos: Ponto[] }) {
   const map = useMap();
   useEffect(() => {
     if (!pontos.length) return;
     if (pontos.length === 1) map.setView(pontos[0], 14);
     else map.fitBounds(L.latLngBounds(pontos), { padding: [32, 32] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, JSON.stringify(pontos)]);
   return null;
 }
@@ -77,22 +82,29 @@ export default function MapaVeiculos({
   altura?: number;
   onCliqueMapa?: (lat: number, lng: number) => void;
 }) {
-  const vs = veiculos.filter((v) => v.latitude != null && v.longitude != null);
-  const ps = [...paragens].filter((p) => p.latitude != null && p.longitude != null).sort((a, b) => a.ordem - b.ordem);
-
-  const pontos = useMemo<[number, number][]>(
-    () => [
-      ...vs.map((v) => [v.latitude as number, v.longitude as number] as [number, number]),
-      ...ps.map((p) => [p.latitude as number, p.longitude as number] as [number, number]),
-    ],
-    [vs, ps],
+  const vs = veiculos.filter(
+    (v): v is PosVeiculo & { latitude: number; longitude: number } => v.latitude != null && v.longitude != null,
   );
+  const ps = [...paragens]
+    .filter((p): p is PosParagem & { latitude: number; longitude: number } => p.latitude != null && p.longitude != null)
+    .sort((a, b) => a.ordem - b.ordem);
+
+  const pontosVeiculos: Ponto[] = vs.map((v) => [v.latitude, v.longitude]);
+  const pontosParagens: Ponto[] = ps.map((p) => [p.latitude, p.longitude]);
+
+  const pontos = useMemo<Ponto[]>(
+    () => [...pontosVeiculos, ...pontosParagens],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(pontosVeiculos), JSON.stringify(pontosParagens)],
+  );
+
+  const centro: Ponto = pontos[0] ?? CENTRO_OMISSAO;
 
   return (
     <div className="overflow-hidden rounded-lg border" style={{ height: altura }}>
       <MapContainer
-        center={pontos[0] ?? [38.7223, -9.1393]}
-        zoom={pontos.length ? 13 : 6}
+        center={centro}
+        zoom={pontos.length ? 13 : 12}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
       >
@@ -102,29 +114,18 @@ export default function MapaVeiculos({
         />
         <AjustarVista pontos={pontos} />
         {onCliqueMapa && <CliqueMapa onClique={onCliqueMapa} />}
-        {tracado && ps.length > 1 && (
-          <Polyline
-            positions={ps.map((p) => [p.latitude as number, p.longitude as number] as [number, number])}
-            pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.7 }}
-          />
+        {tracado && pontosParagens.length > 1 && (
+          <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.7 }} />
         )}
         {ps.map((p) => (
-          <Marker
-            key={p.id}
-            position={[p.latitude as number, p.longitude as number]}
-            icon={iconeParagem(p.ordem, p.destaque)}
-          >
+          <Marker key={p.id} position={[p.latitude, p.longitude]} icon={iconeParagem(p.ordem, p.destaque)}>
             <Popup>
               {p.ordem}. {p.nome}
             </Popup>
           </Marker>
         ))}
         {vs.map((v) => (
-          <Marker
-            key={v.id}
-            position={[v.latitude as number, v.longitude as number]}
-            icon={iconeVeiculo(v.estado)}
-          >
+          <Marker key={v.id} position={[v.latitude, v.longitude]} icon={iconeVeiculo(v.estado)}>
             <Popup>
               <strong>{v.nome}</strong>
               <br />
