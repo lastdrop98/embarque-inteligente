@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import MapaVeiculos from "@/components/MapaVeiculos";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/operador")({
@@ -242,6 +243,22 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <MapaVeiculos
+          paragens={paragens}
+          tracado
+          altura={260}
+          onCliqueMapa={(latClique, lngClique) => {
+            if (!nome) {
+              toast.error("Escreve primeiro o nome da paragem, depois clica no mapa.");
+              return;
+            }
+            setLat(String(latClique));
+            setLng(String(lngClique));
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Escreve o nome da paragem em baixo e depois clica no mapa para definir a localização.
+        </p>
         <ol className="space-y-1">
           {paragens.map((p) => (
             <li key={p.id} className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm">
