@@ -55,6 +55,13 @@ function OperadorPage() {
 
 /* ---------------- Veículos ---------------- */
 
+const ESTADOS_VEICULO: Record<string, string> = {
+  disponivel: "Disponível",
+  em_rota: "Em rota",
+  manutencao: "Em manutenção",
+  indisponivel: "Indisponível",
+};
+
 function useVeiculos() {
   return useQuery({
     queryKey: ["veiculos"],
@@ -75,7 +82,7 @@ function Veiculos() {
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("veiculos").insert({ nome, matricula, lugares });
+      const { error } = await supabase.from("veiculos").insert({ nome, matricula, lugares, estado: "disponivel" });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -84,6 +91,15 @@ function Veiculos() {
       setMatricula("");
       invalidate("veiculos");
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const mudarEstado = useMutation({
+    mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
+      const { error } = await supabase.from("veiculos").update({ estado }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate("veiculos"),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -102,9 +118,20 @@ function Veiculos() {
         <CardHeader><CardTitle>Veículos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((v) => (
-            <div key={v.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
+            <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
               <span>{v.nome} <span className="text-muted-foreground">{v.matricula}</span></span>
-              <Badge variant="secondary">{v.lugares} lugares</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{v.lugares} lugares</Badge>
+                <select
+                  className="h-8 rounded-md border bg-background px-2 text-xs"
+                  value={v.estado}
+                  onChange={(e) => mudarEstado.mutate({ id: v.id, estado: e.target.value })}
+                >
+                  {Object.entries(ESTADOS_VEICULO).map(([valor, rotulo]) => (
+                    <option key={valor} value={valor}>{rotulo}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )) : <p className="text-sm text-muted-foreground">Ainda não há veículos.</p>}
         </CardContent>
@@ -258,7 +285,7 @@ function Rotas() {
             <Label>Veículo</Label>
             <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
               <option value="">—</option>
-              {veiculos?.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+              {veiculos?.map((v) => <option key={v.id} value={v.id}>{v.nome} {v.estado === "disponivel" ? "· disponível" : ""}</option>)}
             </select>
           </div>
           <div className="space-y-2">
@@ -291,15 +318,32 @@ type RotaRow = {
   nome: string;
   hora_inicio: string | null;
   hora_fim: string | null;
+  hora_partida_real: string | null;
+  hora_chegada_real: string | null;
   estado: string;
   passageiros_previstos: number | null;
   veiculos: { nome: string; lugares: number } | null;
   paragens: Paragem[];
 };
 
+function useReconciliacao(rotaId: string) {
+  return useQuery({
+    queryKey: ["reconciliacao", rotaId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("viagens_passageiro").select("estado").eq("rota_id", rotaId);
+      if (error) throw error;
+      const contagem = { pendente: 0, a_bordo: 0, desembarcado: 0, concluida: 0, recusada: 0, nao_compareceu: 0 };
+      for (const v of data) contagem[v.estado as keyof typeof contagem]++;
+      const embarcados = contagem.a_bordo + contagem.desembarcado + contagem.concluida;
+      return { total: data.length, embarcados, emFalta: contagem.pendente, naoCompareceu: contagem.nao_compareceu, desembarcados: contagem.desembarcado + contagem.concluida };
+    },
+  });
+}
+
 function RotaCard({ rota }: { rota: RotaRow }) {
   const invalidate = useInvalidate();
   const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
+  const { data: reconciliacao } = useReconciliacao(rota.id);
   const [nome, setNome] = useState("");
   const [hora, setHora] = useState("");
   const [lat, setLat] = useState("");
@@ -330,6 +374,35 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const marcarHoraReal = useMutation({
+    mutationFn: async (campo: "hora_partida_real" | "hora_chegada_real") => {
+      const { error } = await supabase.from("rotas").update({ [campo]: new Date().toISOString() }).eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Hora real registada"); invalidate("rotas"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const fecharEmbarque = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("viagens_passageiro")
+        .update({ estado: "nao_compareceu" })
+        .eq("rota_id", rota.id)
+        .eq("estado", "pendente");
+      if (error) throw error;
+      const { error: erroRota } = await supabase.from("rotas").update({ estado: "embarque_fechado" }).eq("id", rota.id);
+      if (erroRota) throw erroRota;
+    },
+    onSuccess: () => {
+      toast.success("Embarque fechado — pendentes marcados como não compareceu");
+      invalidate("rotas", "reconciliacao", "viagens");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const sobrelotada = rota.veiculos && reconciliacao && reconciliacao.embarcados > rota.veiculos.lugares;
+
   return (
     <Card>
       <CardHeader>
@@ -351,6 +424,37 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Reconciliação */}
+        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-secondary/50 px-3 py-2 text-sm">
+          <span>Previstos: <strong>{rota.passageiros_previstos ?? "—"}</strong></span>
+          <span>Manifesto: <strong>{reconciliacao?.total ?? 0}</strong></span>
+          <span>Embarcados: <strong>{reconciliacao?.embarcados ?? 0}</strong></span>
+          <span>Em falta: <strong>{reconciliacao?.emFalta ?? 0}</strong></span>
+          {!!reconciliacao?.naoCompareceu && <span>Não compareceu: <strong>{reconciliacao.naoCompareceu}</strong></span>}
+          {sobrelotada && <Badge variant="destructive" className="ml-auto">Sobrelotação</Badge>}
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            disabled={fecharEmbarque.isPending || rota.estado === "embarque_fechado"}
+            onClick={() => fecharEmbarque.mutate()}
+          >
+            Fechar embarque
+          </Button>
+        </div>
+
+        {/* Horas reais / histórico */}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <span>Planeado: {rota.hora_inicio?.slice(0, 5) ?? "—"} → {rota.hora_fim?.slice(0, 5) ?? "—"}</span>
+          <span>Real: {rota.hora_partida_real ? new Date(rota.hora_partida_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"} → {rota.hora_chegada_real ? new Date(rota.hora_chegada_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+          <Button size="sm" variant="ghost" disabled={!!rota.hora_partida_real || marcarHoraReal.isPending} onClick={() => marcarHoraReal.mutate("hora_partida_real")}>
+            Marcar partida real
+          </Button>
+          <Button size="sm" variant="ghost" disabled={!!rota.hora_chegada_real || marcarHoraReal.isPending} onClick={() => marcarHoraReal.mutate("hora_chegada_real")}>
+            Marcar chegada real
+          </Button>
+        </div>
+
         <MapaVeiculos
           paragens={paragens}
           tracado
@@ -535,7 +639,7 @@ function Viagens() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Bilhete QR gerado"); invalidate("viagens"); },
+    onSuccess: () => { toast.success("Bilhete QR gerado"); invalidate("viagens", "reconciliacao"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -598,3 +702,8 @@ function Viagens() {
               </div>
             );
           }) : <p className="text-sm text-muted-foreground">Ainda não há bilhetes.</p>}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
