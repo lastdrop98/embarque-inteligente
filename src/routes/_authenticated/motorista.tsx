@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { validarQr, type ResultadoScan } from "@/lib/mobilidade.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import MapaVeiculos, { type PosVeiculo } from "@/components/MapaVeiculos";
 
 export const Route = createFileRoute("/_authenticated/motorista")({
   head: () => ({
@@ -30,6 +33,8 @@ type Viagem = {
   passageiros: { nome: string } | null;
 };
 
+const TIPOS_INCIDENTE = ["Engarrafamento", "Avaria", "Acidente", "Desvio de rota"] as const;
+
 function MotoristaPage() {
   const qc = useQueryClient();
   const validar = useServerFn(validarQr);
@@ -39,22 +44,28 @@ function MotoristaPage() {
   const [tipo, setTipo] = useState<"embarque" | "desembarque">("embarque");
   const [resultado, setResultado] = useState<ResultadoScan | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [emServico, setEmServico] = useState(false);
+  const [incidenteAberto, setIncidenteAberto] = useState<string | null>(null);
+  const [descIncidente, setDescIncidente] = useState("");
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   const { data: rotas } = useQuery({
     queryKey: ["minhas-rotas"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rotas")
-        .select("id, nome, veiculos(nome, lugares), paragens(id, nome, ordem, hora_prevista)")
+        .select("id, nome, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
         .order("created_at");
       if (error) throw error;
       return data;
     },
+    refetchInterval: 10000,
   });
 
   const rota = rotas?.find((r) => r.id === rotaId) ?? rotas?.[0];
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
+  const proximaParagem = paragemId ? paragens.find((p) => p.id === paragemId) : paragens[0];
 
   const { data: viagens } = useQuery({
     queryKey: ["viagens-rota", rota?.id],
@@ -69,9 +80,69 @@ function MotoristaPage() {
     },
   });
 
+  const aBordo = (viagens ?? []).filter((v) => v.estado === "a_bordo").length;
+  const lugares = (rota?.veiculos as PosVeiculo & { lugares: number } | null)?.lugares ?? 0;
+  const lotado = lugares > 0 && aBordo >= lugares;
+
+  // ---- Localização em tempo real ----
+  async function iniciarTurno() {
+    if (!rota?.veiculo_id) {
+      toast.error("Esta rota não tem veículo atribuído.");
+      return;
+    }
+    if (!navigator.geolocation) {
+      toast.error("Geolocalização não suportada neste dispositivo.");
+      return;
+    }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        await supabase
+          .from("veiculos")
+          .update({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            posicao_updated_at: new Date().toISOString(),
+            estado: "em_rota",
+          })
+          .eq("id", rota.veiculo_id);
+      },
+      (err) => {
+        console.error("[motorista] geolocation error:", err);
+        toast.error("Não foi possível obter a localização. Verifica as permissões.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    setEmServico(true);
+    toast.success("Turno iniciado — a partilhar localização.");
+  }
+
+  async function terminarTurno() {
+    if (watchIdRef.current != null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (rota?.veiculo_id) {
+      await supabase.from("veiculos").update({ estado: "inactivo" }).eq("id", rota.veiculo_id);
+    }
+    setEmServico(false);
+    toast.success("Turno terminado.");
+  }
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, []);
+
+  // ---- Scanner QR ----
   async function pararScan() {
     if (scannerRef.current) {
-      try { await scannerRef.current.stop(); scannerRef.current.clear(); } catch { /* ignorar */ }
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch {
+        /* ignorar */
+      }
       scannerRef.current = null;
     }
     setScanning(false);
@@ -110,23 +181,66 @@ function MotoristaPage() {
     qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
   }
 
+  // ---- Incidentes ----
+  const reportarIncidente = useMutation({
+    mutationFn: async () => {
+      if (!incidenteAberto || !rota) return;
+      const { error } = await supabase.from("incidentes").insert({
+        rota_id: rota.id,
+        motorista_id: (await supabase.auth.getUser()).data.user?.id,
+        tipo: incidenteAberto,
+        descricao: descIncidente ? `${incidenteAberto}: ${descIncidente}` : incidenteAberto,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Incidente reportado");
+      setIncidenteAberto(null);
+      setDescIncidente("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Ecrã do Motorista</h1>
-        <p className="text-sm text-muted-foreground">Rota atribuída e validação de embarques.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Ecrã do Motorista</h1>
+          <p className="text-sm text-muted-foreground">Rota atribuída e validação de embarques.</p>
+        </div>
+        {emServico ? (
+          <Button variant="destructive" size="lg" className="h-12 min-w-[160px]" onClick={terminarTurno}>
+            Terminar turno
+          </Button>
+        ) : (
+          <Button size="lg" className="h-12 min-w-[160px]" onClick={iniciarTurno}>
+            Iniciar turno
+          </Button>
+        )}
       </div>
 
       {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não tem rotas atribuídas.</p>}
 
+      {lotado && (
+        <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          Veículo em lotação máxima ({aBordo}/{lugares}).
+        </div>
+      )}
+
       {rota && (
         <>
           <Card>
-            <CardHeader><CardTitle className="text-base">Rota</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Rota</CardTitle>
+            </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Rota</Label>
-                <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={rota.id} onChange={(e) => { setRotaId(e.target.value); setParagemId(""); }}>
+                <select
+                  className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                  value={rota.id}
+                  onChange={(e) => { setRotaId(e.target.value); setParagemId(""); }}
+                >
                   {rotas?.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
                 </select>
               </div>
@@ -140,10 +254,24 @@ function MotoristaPage() {
               <div className="space-y-2">
                 <Label>Tipo de leitura</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant={tipo === "embarque" ? "default" : "outline"} onClick={() => setTipo("embarque")}>Embarque</Button>
-                  <Button type="button" variant={tipo === "desembarque" ? "default" : "outline"} onClick={() => setTipo("desembarque")}>Desembarque</Button>
+                  <Button type="button" className="h-12" variant={tipo === "embarque" ? "default" : "outline"} onClick={() => setTipo("embarque")}>Embarque</Button>
+                  <Button type="button" className="h-12" variant={tipo === "desembarque" ? "default" : "outline"} onClick={() => setTipo("desembarque")}>Desembarque</Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mapa da rota</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MapaVeiculos
+                veiculos={rota.veiculos ? [rota.veiculos as PosVeiculo] : []}
+                paragens={paragens.map((p) => ({ ...p, destaque: p.id === proximaParagem?.id }))}
+                tracado
+                altura={300}
+              />
             </CardContent>
           </Card>
 
@@ -152,16 +280,16 @@ function MotoristaPage() {
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {scanning
-                  ? <Button variant="destructive" onClick={pararScan}>Parar scan</Button>
-                  : <Button onClick={iniciarScan}>Abrir leitor (Scan)</Button>}
+                  ? <Button variant="destructive" className="h-12" onClick={pararScan}>Parar scan</Button>
+                  : <Button className="h-12" onClick={iniciarScan}>Abrir leitor (Scan)</Button>}
               </div>
               <div id="leitor-qr" className={scanning ? "mx-auto max-w-sm overflow-hidden rounded-lg border" : "hidden"} />
               <div className="flex flex-wrap items-end gap-2">
                 <div className="min-w-[240px] flex-1 space-y-2">
                   <Label>Ou introduza o código manualmente</Label>
-                  <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token do bilhete" />
+                  <Input className="h-12" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token do bilhete" />
                 </div>
-                <Button variant="secondary" disabled={!token} onClick={() => submeter()}>Validar</Button>
+                <Button variant="secondary" className="h-12" disabled={!token} onClick={() => submeter()}>Validar</Button>
               </div>
 
               {resultado && (
@@ -173,6 +301,36 @@ function MotoristaPage() {
                   {resultado.aprovado ? "Aprovado" : "Recusado"}
                   {resultado.passageiro ? ` — ${resultado.passageiro}` : ""}
                   {resultado.motivo ? ` — ${resultado.motivo}` : ""}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Reportar incidente</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {TIPOS_INCIDENTE.map((t) => (
+                  <Button
+                    key={t}
+                    variant={incidenteAberto === t ? "default" : "outline"}
+                    className="h-12"
+                    onClick={() => setIncidenteAberto(incidenteAberto === t ? null : t)}
+                  >
+                    {t}
+                  </Button>
+                ))}
+              </div>
+              {incidenteAberto && (
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Detalhes (opcional)"
+                    value={descIncidente}
+                    onChange={(e) => setDescIncidente(e.target.value)}
+                  />
+                  <Button disabled={reportarIncidente.isPending} onClick={() => reportarIncidente.mutate()}>
+                    Enviar reporte de "{incidenteAberto}"
+                  </Button>
                 </div>
               )}
             </CardContent>
