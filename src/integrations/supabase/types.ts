@@ -46,7 +46,7 @@ export type Database = {
           },
         ]
       }
-      incidentes: {
+                  incidentes: {
         Row: {
           created_at: string
           descricao: string
@@ -54,6 +54,7 @@ export type Database = {
           id: string
           motorista_id: string | null
           rota_id: string | null
+          tipo: string | null
         }
         Insert: {
           created_at?: string
@@ -62,6 +63,7 @@ export type Database = {
           id?: string
           motorista_id?: string | null
           rota_id?: string | null
+          tipo?: string | null
         }
         Update: {
           created_at?: string
@@ -70,6 +72,7 @@ export type Database = {
           id?: string
           motorista_id?: string | null
           rota_id?: string | null
+          tipo?: string | null
         }
         Relationships: [
           {
