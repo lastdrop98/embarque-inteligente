@@ -12,6 +12,7 @@ export type Sessao = {
     Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"]
   >;
   papeis: Papel[];
+  papel: Papel | null;
   perfil: {
     nome: string;
     email: string;
@@ -19,6 +20,13 @@ export type Sessao = {
   } | null;
   activo: boolean;
 };
+
+const PAPEIS_VALIDOS: Papel[] = [
+  "admin",
+  "operador",
+  "motorista",
+  "passageiro",
+];
 
 export function useSessao() {
   return useQuery({
@@ -37,19 +45,21 @@ export function useSessao() {
         return null;
       }
 
-      const [{ data: papeis, error: papeisError }, { data: perfil, error: perfilError }] =
-        await Promise.all([
-          supabase
-            .from("papeis_utilizador")
-            .select("role")
-            .eq("user_id", user.id),
+      const [
+        { data: papeis, error: papeisError },
+        { data: perfil, error: perfilError },
+      ] = await Promise.all([
+        supabase
+          .from("papeis_utilizador")
+          .select("role")
+          .eq("user_id", user.id),
 
-          supabase
-            .from("perfis")
-            .select("nome, email, activo")
-            .eq("id", user.id)
-            .maybeSingle(),
-        ]);
+        supabase
+          .from("perfis")
+          .select("nome, email, activo")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ]);
 
       if (papeisError) {
         throw papeisError;
@@ -62,12 +72,48 @@ export function useSessao() {
       const lista = (papeis ?? [])
         .map((p) => p.role as Papel)
         .filter((role): role is Papel =>
-          ["admin", "operador", "motorista", "passageiro"].includes(role)
+          PAPEIS_VALIDOS.includes(role)
         );
+
+      const papeisUnicos = [
+        ...new Set(lista),
+      ];
+
+      /*
+       * O papel da sessão só é considerado quando
+       * estiver realmente atribuído ao utilizador.
+       *
+       * Para contas com apenas um papel, esse papel
+       * é usado automaticamente.
+       *
+       * Para contas com vários papéis, o utilizador
+       * escolhe através de sessionStorage.
+       */
+      let papel: Papel | null = null;
+
+      if (papeisUnicos.length === 1) {
+        papel = papeisUnicos[0];
+      } else if (papeisUnicos.length > 1) {
+        const armazenado =
+          sessionStorage.getItem("papel_sessao");
+
+        if (
+          armazenado &&
+          PAPEIS_VALIDOS.includes(
+            armazenado as Papel
+          ) &&
+          papeisUnicos.includes(
+            armazenado as Papel
+          )
+        ) {
+          papel = armazenado as Papel;
+        }
+      }
 
       return {
         user,
-        papeis: [...new Set(lista)],
+        papeis: papeisUnicos,
+        papel,
         perfil,
         activo: perfil?.activo ?? true,
       };
