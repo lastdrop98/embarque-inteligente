@@ -1,4 +1,9 @@
-import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useNavigate,
+  useRouter,
+  Link,
+} from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +23,26 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
+
+type Papel =
+  | "admin"
+  | "operador"
+  | "motorista"
+  | "passageiro";
+
+const PAPEIS_VALIDOS: Papel[] = [
+  "admin",
+  "operador",
+  "motorista",
+  "passageiro",
+];
+
+const ROTAS_POR_PAPEL: Record<Papel, string> = {
+  admin: "/admin",
+  operador: "/operador",
+  motorista: "/motorista",
+  passageiro: "/passageiro",
+};
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -104,12 +129,32 @@ function AuthPage() {
   async function seguirParaPainel() {
     await router.invalidate();
 
-    const { data } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    const uid = data.user?.id;
+    if (userError) {
+      console.error(
+        "[auth] erro ao obter utilizador:",
+        userError
+      );
+
+      toast.error(
+        "Não foi possível verificar a tua sessão. Tenta novamente."
+      );
+
+      return;
+    }
+
+    const uid = user?.id;
 
     if (!uid) {
-      navigate({ to: "/auth", replace: true });
+      navigate({
+        to: "/auth",
+        replace: true,
+      });
+
       return;
     }
 
@@ -119,54 +164,70 @@ function AuthPage() {
       .eq("user_id", uid);
 
     if (error) {
-      console.error("[auth] erro ao obter papel:", error);
+      console.error(
+        "[auth] erro ao obter papéis:",
+        error
+      );
+
+      toast.error(
+        "Não foi possível verificar os papéis da tua conta."
+      );
+
+      return;
+    }
+
+    const lista: Papel[] = [
+      ...new Set(
+        (papeis ?? [])
+          .map((p) => p.role as string)
+          .filter((role): role is Papel =>
+            PAPEIS_VALIDOS.includes(
+              role as Papel
+            )
+          )
+      ),
+    ];
+
+    /*
+     * Nenhum papel atribuído.
+     * Não devemos escolher automaticamente
+     * motorista, passageiro ou qualquer outro papel.
+     */
+    if (lista.length === 0) {
+      toast.error(
+        "A tua conta não possui nenhum papel atribuído. Contacta o administrador."
+      );
+
+      return;
+    }
+
+    /*
+     * Apenas um papel:
+     * podemos entrar directamente no painel correspondente.
+     */
+    if (lista.length === 1) {
+      const rota = ROTAS_POR_PAPEL[lista[0]];
 
       navigate({
-        to: "/painel",
+        to: rota,
         replace: true,
       });
 
       return;
     }
 
-    const lista = (papeis ?? []).map(
-      (p) => p.role as string
+    /*
+     * Mais de um papel:
+     * o utilizador deve escolher explicitamente
+     * com que papel pretende entrar nesta sessão.
+     */
+    sessionStorage.setItem(
+      "papeis_disponiveis",
+      JSON.stringify(lista)
     );
 
-    if (lista.includes("admin")) {
-      navigate({
-        to: "/admin",
-        replace: true,
-      });
-      return;
-    }
-
-    if (lista.includes("operador")) {
-      navigate({
-        to: "/operador",
-        replace: true,
-      });
-      return;
-    }
-
-    if (lista.includes("motorista")) {
-      navigate({
-        to: "/motorista",
-        replace: true,
-      });
-      return;
-    }
-
-    if (lista.includes("passageiro")) {
-      navigate({
-        to: "/passageiro",
-        replace: true,
-      });
-      return;
-    }
-
     navigate({
-      to: "/painel",
+      to: "/selecionar-papel",
       replace: true,
     });
   }
@@ -281,7 +342,6 @@ function AuthPage() {
        * Dependendo da configuração do Supabase,
        * a sessão pode ou não ser criada imediatamente.
        */
-
       if (data.session) {
         toast.success(
           "Conta criada com sucesso."
@@ -296,12 +356,18 @@ function AuthPage() {
        * Isto funciona quando a confirmação de email
        * não é obrigatória.
        */
-
       const tentativa =
         await supabase.auth.signInWithPassword({
           email: emailLimpo,
           password,
         });
+
+      if (tentativa.error) {
+        console.warn(
+          "[auth] tentativa de login após registo:",
+          tentativa.error
+        );
+      }
 
       if (tentativa.data.session) {
         toast.success(
@@ -316,7 +382,6 @@ function AuthPage() {
        * A conta provavelmente foi criada,
        * mas o Supabase exige confirmação do email.
        */
-
       toast.success(
         "Conta criada. Verifica o teu email para concluir o acesso."
       );
