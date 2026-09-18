@@ -484,12 +484,13 @@ function Layout() {
           {data?.papeis &&
             data.papeis.length > 1 && (
               <Button
-                size="sm"
-                variant="outline"
-                onClick={trocarPapel}
-              >
-                Trocar papel
-              </Button>
+  size="sm"
+  variant="outline"
+  className="border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+  onClick={trocarPapel}
+>
+  Trocar papel
+</Button>
             )}
 
           {data?.user?.id && (
