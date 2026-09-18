@@ -17,6 +17,7 @@ import { Route as AuthenticatedMotoristaRouteImport } from './routes/_authentica
 import { Route as AuthenticatedOperadorRouteImport } from './routes/_authenticated/operador'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedPassageiroRouteImport } from './routes/_authenticated/passageiro'
+import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as PTokenRouteImport } from './routes/p.$token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -58,6 +59,11 @@ const AuthenticatedPassageiroRoute = AuthenticatedPassageiroRouteImport.update({
   path: '/passageiro',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
+  id: '/pedidos',
+  path: '/pedidos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const PTokenRoute = PTokenRouteImport.update({
   id: '/p/$token',
   path: '/p/$token',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/operador': typeof AuthenticatedOperadorRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/passageiro': typeof AuthenticatedPassageiroRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/operador': typeof AuthenticatedOperadorRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/passageiro': typeof AuthenticatedPassageiroRoute
+  '/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_authenticated/operador': typeof AuthenticatedOperadorRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/passageiro': typeof AuthenticatedPassageiroRoute
+  '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/operador'
     | '/painel'
     | '/passageiro'
+    | '/pedidos'
     | '/p/$token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/operador'
     | '/painel'
     | '/passageiro'
+    | '/pedidos'
     | '/p/$token'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_authenticated/operador'
     | '/_authenticated/painel'
     | '/_authenticated/passageiro'
+    | '/_authenticated/pedidos'
     | '/p/$token'
   fileRoutesById: FileRoutesById
 }
@@ -195,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPassageiroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pedidos': {
+      id: '/_authenticated/pedidos'
+      path: '/pedidos'
+      fullPath: '/pedidos'
+      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/p/$token': {
       id: '/p/$token'
       path: '/p/$token'
@@ -211,6 +230,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedOperadorRoute: typeof AuthenticatedOperadorRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
   AuthenticatedPassageiroRoute: typeof AuthenticatedPassageiroRoute
+  AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -219,6 +239,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedOperadorRoute: AuthenticatedOperadorRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRoute,
   AuthenticatedPassageiroRoute: AuthenticatedPassageiroRoute,
+  AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
