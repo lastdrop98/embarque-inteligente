@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as SelecionarPapelRouteImport } from './routes/selecionar-papel'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedMotoristaRouteImport } from './routes/_authenticated/motorista'
 import { Route as AuthenticatedOperadorRouteImport } from './routes/_authenticated/operador'
@@ -25,45 +26,60 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+
+const SelecionarPapelRoute = SelecionarPapelRouteImport.update({
+  id: '/selecionar-papel',
+  path: '/selecionar-papel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const AuthenticatedMotoristaRoute = AuthenticatedMotoristaRouteImport.update({
   id: '/motorista',
   path: '/motorista',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const AuthenticatedOperadorRoute = AuthenticatedOperadorRouteImport.update({
   id: '/operador',
   path: '/operador',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const AuthenticatedPainelRoute = AuthenticatedPainelRouteImport.update({
   id: '/painel',
   path: '/painel',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const AuthenticatedPassageiroRoute = AuthenticatedPassageiroRouteImport.update({
   id: '/passageiro',
   path: '/passageiro',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
   id: '/pedidos',
   path: '/pedidos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+
 const PTokenRoute = PTokenRouteImport.update({
   id: '/p/$token',
   path: '/p/$token',
@@ -73,6 +89,7 @@ const PTokenRoute = PTokenRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/selecionar-papel': typeof SelecionarPapelRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/motorista': typeof AuthenticatedMotoristaRoute
   '/operador': typeof AuthenticatedOperadorRoute
@@ -81,9 +98,11 @@ export interface FileRoutesByFullPath {
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
+
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/selecionar-papel': typeof SelecionarPapelRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/motorista': typeof AuthenticatedMotoristaRoute
   '/operador': typeof AuthenticatedOperadorRoute
@@ -92,11 +111,13 @@ export interface FileRoutesByTo {
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
+
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/selecionar-papel': typeof SelecionarPapelRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/motorista': typeof AuthenticatedMotoristaRoute
   '/_authenticated/operador': typeof AuthenticatedOperadorRoute
@@ -105,11 +126,14 @@ export interface FileRoutesById {
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/p/$token': typeof PTokenRoute
 }
+
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
+
   fullPaths:
     | '/'
     | '/auth'
+    | '/selecionar-papel'
     | '/admin'
     | '/motorista'
     | '/operador'
@@ -117,10 +141,13 @@ export interface FileRouteTypes {
     | '/passageiro'
     | '/pedidos'
     | '/p/$token'
+
   fileRoutesByTo: FileRoutesByTo
+
   to:
     | '/'
     | '/auth'
+    | '/selecionar-papel'
     | '/admin'
     | '/motorista'
     | '/operador'
@@ -128,11 +155,13 @@ export interface FileRouteTypes {
     | '/passageiro'
     | '/pedidos'
     | '/p/$token'
+
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/selecionar-papel'
     | '/_authenticated/admin'
     | '/_authenticated/motorista'
     | '/_authenticated/operador'
@@ -140,12 +169,15 @@ export interface FileRouteTypes {
     | '/_authenticated/passageiro'
     | '/_authenticated/pedidos'
     | '/p/$token'
+
   fileRoutesById: FileRoutesById
 }
+
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  SelecionarPapelRoute: typeof SelecionarPapelRoute
   PTokenRoute: typeof PTokenRoute
 }
 
@@ -158,6 +190,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -165,6 +198,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -172,6 +206,15 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+
+    '/selecionar-papel': {
+      id: '/selecionar-papel'
+      path: '/selecionar-papel'
+      fullPath: '/selecionar-papel'
+      preLoaderRoute: typeof SelecionarPapelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -179,6 +222,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/_authenticated/motorista': {
       id: '/_authenticated/motorista'
       path: '/motorista'
@@ -186,6 +230,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMotoristaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/_authenticated/operador': {
       id: '/_authenticated/operador'
       path: '/operador'
@@ -193,6 +238,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOperadorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/_authenticated/painel': {
       id: '/_authenticated/painel'
       path: '/painel'
@@ -200,6 +246,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPainelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/_authenticated/passageiro': {
       id: '/_authenticated/passageiro'
       path: '/passageiro'
@@ -207,6 +254,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPassageiroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/_authenticated/pedidos': {
       id: '/_authenticated/pedidos'
       path: '/pedidos'
@@ -214,6 +262,7 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPedidosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+
     '/p/$token': {
       id: '/p/$token'
       path: '/p/$token'
@@ -243,20 +292,25 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 }
 
 const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+  AuthenticatedRouteRoute._addFileChildren(
+    AuthenticatedRouteRouteChildren
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  SelecionarPapelRoute: SelecionarPapelRoute,
   PTokenRoute: PTokenRoute,
 }
+
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
 import type { startInstance } from './start.ts'
+
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
