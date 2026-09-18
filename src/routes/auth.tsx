@@ -38,8 +38,21 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
-  const [papel, setPapel] = useState<"operador" | "motorista">("operador");
+  const [papel, setPapel] = useState<"operador" | "motorista" | "passageiro">("operador");
   const [loading, setLoading] = useState(false);
+
+  async function seguirParaPainel() {
+    await router.invalidate();
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    let destino: "/painel" | "/passageiro" = "/painel";
+    if (uid) {
+      const { data: papeis } = await supabase.from("papeis_utilizador").select("role").eq("user_id", uid);
+      const lista = (papeis ?? []).map((p) => p.role as string);
+      if (lista.length === 1 && lista[0] === "passageiro") destino = "/passageiro";
+    }
+    navigate({ to: destino, replace: true });
+  }
 
   async function entrar(e: React.FormEvent) {
     e.preventDefault();
