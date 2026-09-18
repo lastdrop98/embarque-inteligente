@@ -72,8 +72,7 @@ function AuthPage() {
         toast.error("Não foi possível iniciar sessão. Tenta novamente.");
         return;
       }
-      await router.invalidate();
-      navigate({ to: "/painel", replace: true });
+      await seguirParaPainel();
     } catch (err) {
       console.error("[auth] signIn exception:", err);
       toast.error("Ocorreu um erro inesperado ao entrar. Tenta novamente.");
@@ -109,8 +108,7 @@ function AuthPage() {
           password,
         });
         if (tentativa.data.session) {
-          await router.invalidate();
-          navigate({ to: "/painel", replace: true });
+          await seguirParaPainel();
           return;
         }
         toast.success(
@@ -118,8 +116,7 @@ function AuthPage() {
         );
         return;
       }
-      await router.invalidate();
-      navigate({ to: "/painel", replace: true });
+      await seguirParaPainel();
     } catch (err) {
       console.error("[auth] signUp exception:", err);
       toast.error("Ocorreu um erro inesperado ao criar a conta. Tenta novamente.");
@@ -137,7 +134,7 @@ function AuthPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Acesso à plataforma</CardTitle>
-            <CardDescription>Operadores e motoristas.</CardDescription>
+            <CardDescription>Operadores, motoristas e passageiros.</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="entrar">
@@ -178,15 +175,15 @@ function AuthPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Papel</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {(["operador", "motorista"] as const).map((p) => (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["operador", "motorista", "passageiro"] as const).map((p) => (
                         <Button
                           key={p}
                           type="button"
                           variant={papel === p ? "default" : "outline"}
                           onClick={() => setPapel(p)}
                         >
-                          {p === "operador" ? "Operador" : "Motorista"}
+                          {p === "operador" ? "Operador" : p === "motorista" ? "Motorista" : "Passageiro"}
                         </Button>
                       ))}
                     </div>
