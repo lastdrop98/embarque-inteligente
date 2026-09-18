@@ -37,7 +37,14 @@ REVOKE ALL ON FUNCTION public.pode_gerir_rota(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.pode_ver_rota(uuid) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.auto_confirm_email() FROM PUBLIC, anon, authenticated;
+DO $$
+BEGIN
+  IF to_regprocedure('public.auto_confirm_email()') IS NOT NULL THEN
+    REVOKE ALL
+    ON FUNCTION public.auto_confirm_email()
+    FROM PUBLIC, anon, authenticated;
+  END IF;
+END $$;
 GRANT EXECUTE ON FUNCTION public.conta_activa() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.pode_gerir_rota(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.pode_ver_rota(uuid) TO authenticated;
