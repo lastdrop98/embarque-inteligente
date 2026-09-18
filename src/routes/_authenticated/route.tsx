@@ -1,4 +1,3 @@
-```tsx
 import {
   createFileRoute,
   Outlet,
@@ -49,6 +48,18 @@ const LINKS_POR_PAPEL: Record<
       to: "/admin",
       label: "Administrador",
     },
+    {
+      to: "/operador",
+      label: "Operador",
+    },
+    {
+      to: "/motorista",
+      label: "Motorista",
+    },
+    {
+      to: "/passageiro",
+      label: "Passageiro",
+    },
   ],
 
   operador: [
@@ -88,13 +99,31 @@ function rotaPermitidaParaPapel(
   papel: Papel,
   pathname: string
 ): boolean {
-  switch (papel) {
-    case "admin":
-      return (
-        pathname === "/admin" ||
-        pathname.startsWith("/admin/")
-      );
+  /*
+   * ADMINISTRADOR:
+   *
+   * O administrador possui acesso global
+   * às áreas protegidas da plataforma.
+   *
+   * A escolha do papel continua explícita:
+   * se o administrador escolher "Administrador",
+   * a sessão fica em modo administrativo e
+   * pode navegar pelas outras áreas.
+   */
+  if (papel === "admin") {
+    return (
+      pathname === "/admin" ||
+      pathname.startsWith("/admin/") ||
+      pathname === "/operador" ||
+      pathname.startsWith("/operador/") ||
+      pathname === "/motorista" ||
+      pathname.startsWith("/motorista/") ||
+      pathname === "/passageiro" ||
+      pathname.startsWith("/passageiro/")
+    );
+  }
 
+  switch (papel) {
     case "operador":
       return (
         pathname === "/operador" ||
@@ -151,9 +180,7 @@ export const Route = createFileRoute(
 )({
   ssr: false,
 
-  beforeLoad: async ({
-    location,
-  }) => {
+  beforeLoad: async ({ location }) => {
     const {
       data,
       error,
@@ -195,12 +222,17 @@ export const Route = createFileRoute(
     ];
 
     /*
-     * Uma conta sem papel não pode entrar.
+     * Conta sem qualquer papel:
+     * não permitimos acesso.
      */
     if (roles.length === 0) {
       console.error(
         "[route] utilizador sem papel:",
         data.user.id
+      );
+
+      sessionStorage.removeItem(
+        "papel_sessao"
       );
 
       throw redirect({
@@ -211,17 +243,26 @@ export const Route = createFileRoute(
     let papelSessao: Papel | null = null;
 
     /*
-     * Se existe apenas um papel,
-     * esse é o papel da sessão.
+     * Apenas um papel:
+     * entra directamente nesse papel.
      */
     if (roles.length === 1) {
       papelSessao = roles[0];
-    } else {
-      /*
-       * Se existem vários papéis,
-       * só usamos aquele que o utilizador
-       * escolheu explicitamente.
-       */
+
+      sessionStorage.setItem(
+        "papel_sessao",
+        papelSessao
+      );
+    }
+
+    /*
+     * Mais de um papel:
+     * NÃO escolhemos automaticamente.
+     *
+     * O utilizador precisa escolher
+     * explicitamente o papel da sessão.
+     */
+    else {
       const armazenado =
         sessionStorage.getItem(
           "papel_sessao"
@@ -236,8 +277,7 @@ export const Route = createFileRoute(
     }
 
     /*
-     * Conta com vários papéis sem
-     * escolha explícita.
+     * Ainda não escolheu o papel.
      */
     if (!papelSessao) {
       sessionStorage.setItem(
@@ -254,8 +294,10 @@ export const Route = createFileRoute(
       location.pathname;
 
     /*
-     * Impede acesso a painéis pertencentes
-     * a outro papel.
+     * Verifica se o papel seleccionado
+     * pode entrar nesta rota.
+     *
+     * Admin tem acesso global.
      */
     if (
       rotaPermitidaParaPapel(
@@ -271,8 +313,9 @@ export const Route = createFileRoute(
     }
 
     /*
-     * Se tentar abrir manualmente outro painel,
-     * volta para o painel do papel escolhido.
+     * Se tentou entrar numa área
+     * que não pertence ao papel activo,
+     * volta para o painel desse papel.
      */
     redirecionarParaPapel(
       papelSessao
@@ -297,7 +340,7 @@ function Layout() {
   let papelAtual: Papel | null = null;
 
   /*
-   * Conta com apenas um papel.
+   * Determina o papel activo nesta sessão.
    */
   if (
     data?.papeis?.length === 1
@@ -306,11 +349,6 @@ function Layout() {
       data.papeis[0];
   }
 
-  /*
-   * Conta com vários papéis:
-   * usa somente o papel escolhido
-   * para esta sessão.
-   */
   else if (
     data?.papeis &&
     data.papeis.length > 1
@@ -331,15 +369,18 @@ function Layout() {
     }
   }
 
+  /*
+   * Admin seleccionado:
+   * mostra todas as áreas disponíveis.
+   *
+   * Outros papéis:
+   * mostram apenas a sua área.
+   */
   const links =
     papelAtual
       ? LINKS_POR_PAPEL[papelAtual]
       : [];
 
-  /*
-   * Permite trocar de papel sem
-   * terminar a sessão.
-   */
   function trocarPapel() {
     if (
       !data?.papeis ||
@@ -348,6 +389,10 @@ function Layout() {
       return;
     }
 
+    /*
+     * Remove o papel actual para obrigar
+     * a uma nova escolha explícita.
+     */
     sessionStorage.removeItem(
       "papel_sessao"
     );
@@ -391,7 +436,9 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-secondary">
+
       <header className="bg-sidebar text-sidebar-foreground">
+
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
 
           <Link
@@ -402,6 +449,7 @@ function Layout() {
           </Link>
 
           <nav className="flex flex-1 flex-wrap gap-1 text-sm">
+
             {links.map((l) => (
               <NavLink
                 key={l.to}
@@ -410,6 +458,7 @@ function Layout() {
                 {l.label}
               </NavLink>
             ))}
+
           </nav>
 
           {papelAtual && (
@@ -428,6 +477,10 @@ function Layout() {
             </span>
           )}
 
+          {/* 
+  Só aparece quando a conta possui
+  mais de um papel.
+*/}
           {data?.papeis &&
             data.papeis.length > 1 && (
               <Button
@@ -454,9 +507,11 @@ function Layout() {
           </Button>
 
         </div>
+
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
+
         {suspenso ? (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
 
@@ -473,7 +528,9 @@ function Layout() {
         ) : (
           <Outlet />
         )}
+
       </main>
+
     </div>
   );
 }
@@ -498,4 +555,3 @@ function NavLink({
     </Link>
   );
 }
-```
