@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -241,7 +243,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           created_at?: string
-          email: string
+          email?: string
           id: string
           nome?: string
         }
@@ -518,9 +520,9 @@ export type Database = {
       estado_viagem:
         | "pendente"
         | "a_bordo"
-        | "desembarcado"
         | "concluida"
         | "recusada"
+        | "desembarcado"
         | "nao_compareceu"
       resultado_registo: "aprovado" | "recusado"
       tipo_registo: "embarque" | "desembarque"
@@ -535,7 +537,7 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Tables
+export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
@@ -564,7 +566,7 @@ export type Tables
       : never
     : never
 
-export type TablesInsert
+export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -589,7 +591,7 @@ export type TablesInsert
       : never
     : never
 
-export type TablesUpdate
+export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -614,7 +616,7 @@ export type TablesUpdate
       : never
     : never
 
-export type Enums
+export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -631,7 +633,7 @@ export type Enums
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-export type CompositeTypes
+export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -653,14 +655,35 @@ export const Constants = {
     Enums: {
       app_role: ["operador", "motorista", "admin", "passageiro"],
       categoria_passageiro: [
-        "atleta", "coach", "official", "media", "sponsor",
-        "guest", "vip", "staff", "voluntario", "arbitro", "independente",
+        "atleta",
+        "coach",
+        "official",
+        "media",
+        "sponsor",
+        "guest",
+        "vip",
+        "staff",
+        "voluntario",
+        "arbitro",
+        "independente",
       ],
       estado_rota: [
-        "rascunho", "agendada", "embarque_aberto",
-        "embarque_fechado", "em_curso", "concluida", "cancelada",
+        "rascunho",
+        "agendada",
+        "embarque_aberto",
+        "embarque_fechado",
+        "em_curso",
+        "concluida",
+        "cancelada",
       ],
-      estado_viagem: ["pendente", "a_bordo", "desembarcado", "concluida", "recusada", "nao_compareceu"],
+      estado_viagem: [
+        "pendente",
+        "a_bordo",
+        "concluida",
+        "recusada",
+        "desembarcado",
+        "nao_compareceu",
+      ],
       resultado_registo: ["aprovado", "recusado"],
       tipo_registo: ["embarque", "desembarque"],
     },
