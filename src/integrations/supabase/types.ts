@@ -232,6 +232,88 @@ export type Database = {
           },
         ]
       }
+      pedidos_transporte: {
+        Row: {
+          categoria: Database["public"]["Enums"]["categoria_passageiro"]
+          created_at: string
+          criado_por: string | null
+          data_viagem: string
+          delegacao_id: string | null
+          destino: string
+          estado: Database["public"]["Enums"]["estado_pedido"]
+          hora: string | null
+          id: string
+          num_passageiros: number
+          observacoes: string | null
+          origem: string
+          passageiro_id: string | null
+          rota_id: string | null
+          tipo_viatura: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          categoria?: Database["public"]["Enums"]["categoria_passageiro"]
+          created_at?: string
+          criado_por?: string | null
+          data_viagem: string
+          delegacao_id?: string | null
+          destino: string
+          estado?: Database["public"]["Enums"]["estado_pedido"]
+          hora?: string | null
+          id?: string
+          num_passageiros?: number
+          observacoes?: string | null
+          origem: string
+          passageiro_id?: string | null
+          rota_id?: string | null
+          tipo_viatura?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          categoria?: Database["public"]["Enums"]["categoria_passageiro"]
+          created_at?: string
+          criado_por?: string | null
+          data_viagem?: string
+          delegacao_id?: string | null
+          destino?: string
+          estado?: Database["public"]["Enums"]["estado_pedido"]
+          hora?: string | null
+          id?: string
+          num_passageiros?: number
+          observacoes?: string | null
+          origem?: string
+          passageiro_id?: string | null
+          rota_id?: string | null
+          tipo_viatura?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_transporte_delegacao_id_fkey"
+            columns: ["delegacao_id"]
+            isOneToOne: false
+            referencedRelation: "delegacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_transporte_passageiro_id_fkey"
+            columns: ["passageiro_id"]
+            isOneToOne: false
+            referencedRelation: "passageiros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_transporte_rota_id_fkey"
+            columns: ["rota_id"]
+            isOneToOne: false
+            referencedRelation: "rotas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perfis: {
         Row: {
           activo: boolean
@@ -509,6 +591,14 @@ export type Database = {
         | "voluntario"
         | "arbitro"
         | "independente"
+      estado_pedido:
+        | "rascunho"
+        | "submetido"
+        | "em_analise"
+        | "aprovado"
+        | "alocado"
+        | "agendado"
+        | "rejeitado"
       estado_rota:
         | "rascunho"
         | "agendada"
@@ -666,6 +756,15 @@ export const Constants = {
         "voluntario",
         "arbitro",
         "independente",
+      ],
+      estado_pedido: [
+        "rascunho",
+        "submetido",
+        "em_analise",
+        "aprovado",
+        "alocado",
+        "agendado",
+        "rejeitado",
       ],
       estado_rota: [
         "rascunho",
