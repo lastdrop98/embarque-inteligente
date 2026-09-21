@@ -95,13 +95,21 @@ function MotoristaPage() {
       toast.error("Geolocalização não suportada neste dispositivo.");
       return;
     }
-    if (rota.estado !== "em_curso") {
+    // O turno pode começar enquanto o embarque está aberto, para activar o GPS
+    // e permitir a validação dos passageiros. A rota passa a "em_curso"
+    // apenas quando o embarque for fechado.
+    if (rota.estado === "embarque_aberto") {
+      // Mantém o estado da rota em embarque_aberto durante o embarque.
+    } else if (rota.estado === "embarque_fechado") {
       const { error: erroRota } = await supabase.rpc("iniciar_rota_segura", { _rota_id: rota.id });
       if (erroRota) {
         toast.error(erroRota.message);
         return;
       }
       await qc.invalidateQueries({ queryKey: ["minhas-rotas"] });
+    } else if (rota.estado !== "em_curso") {
+      toast.error("A rota precisa estar com o embarque aberto ou fechado para iniciar o turno.");
+      return;
     }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
