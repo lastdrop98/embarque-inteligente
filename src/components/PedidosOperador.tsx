@@ -20,6 +20,16 @@ const ESTADOS: Record<string, string> = {
   rejeitado: "Rejeitado",
 };
 
+const ESTADOS_ROTA: Record<string, string> = {
+  rascunho: "Rascunho",
+  agendada: "Agendada",
+  embarque_aberto: "Embarque aberto",
+  embarque_fechado: "Embarque fechado",
+  em_curso: "Em curso",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+};
+
 const PROXIMOS: Record<string, EstadoPedido[]> = {
   submetido: ["em_analise", "rejeitado"],
   em_analise: ["aprovado", "rejeitado"],
@@ -29,6 +39,9 @@ const PROXIMOS: Record<string, EstadoPedido[]> = {
   rejeitado: [],
   rascunho: ["submetido"],
 };
+
+type Paragem = { id: string; nome: string; ordem: number; hora_prevista: string | null };
+type Rota = { id: string; nome: string; estado: string; hora_inicio: string | null; hora_fim: string | null; paragens: Paragem[] };
 
 type Pedido = {
   id: string;
@@ -43,19 +56,25 @@ type Pedido = {
   estado: EstadoPedido;
   rota_id: string | null;
   created_at: string;
+  passageiro_id: string | null;
   passageiros: { nome: string; contacto: string } | null;
 };
+
+const normalizar = (valor: string) =>
+  valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 
 export function PedidosOperador() {
   const qc = useQueryClient();
   const [rotaPorPedido, setRotaPorPedido] = useState<Record<string, string>>({});
+  const [embarquePorPedido, setEmbarquePorPedido] = useState<Record<string, string>>({});
+  const [desembarquePorPedido, setDesembarquePorPedido] = useState<Record<string, string>>({});
 
   const { data: pedidos, isLoading, error } = useQuery({
     queryKey: ["pedidos-operador"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedidos_transporte")
-        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at, passageiros(nome, contacto)")
+        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at, passageiro_id, passageiros(nome, contacto)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Pedido[];
@@ -67,21 +86,32 @@ export function PedidosOperador() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("rotas")
-        .select("id, nome, estado, hora_inicio, hora_fim")
+        .select("id, nome, estado, hora_inicio, hora_fim, paragens(id, nome, ordem, hora_prevista)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as Rota[];
     },
   });
 
   const rotaPorId = new Map((rotas ?? []).map((rota) => [rota.id, rota]));
 
+  const prepararParagens = (pedido: Pedido, rota: Rota) => {
+    const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
+    const origemNormalizada = normalizar(pedido.origem);
+    const destinoNormalizado = normalizar(pedido.destino);
+    const origemEncontrada =
+      paragens.find((p) => normalizar(p.nome) === origemNormalizada) ??
+      paragens.find((p) => normalizar(p.nome).includes(origemNormalizada) || origemNormalizada.includes(normalizar(p.nome)));
+    const destinoEncontrado =
+      paragens.find((p) => normalizar(p.nome) === destinoNormalizado) ??
+      paragens.find((p) => normalizar(p.nome).includes(destinoNormalizado) || destinoNormalizado.includes(normalizar(p.nome)));
+    if (origemEncontrada) setEmbarquePorPedido((prev) => ({ ...prev, [pedido.id]: origemEncontrada.id }));
+    if (destinoEncontrado) setDesembarquePorPedido((prev) => ({ ...prev, [pedido.id]: destinoEncontrado.id }));
+  };
+
   const alterarEstado = useMutation({
     mutationFn: async ({ id, estado }: { id: string; estado: EstadoPedido }) => {
-      const { error } = await supabase
-        .from("pedidos_transporte")
-        .update({ estado })
-        .eq("id", id);
+      const { error } = await supabase.from("pedidos_transporte").update({ estado }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -92,16 +122,44 @@ export function PedidosOperador() {
   });
 
   const alocar = useMutation({
-    mutationFn: async ({ id, rotaId }: { id: string; rotaId: string }) => {
-      const { error } = await supabase
+    mutationFn: async ({ pedido, rotaId, embarqueId, desembarqueId }: {
+      pedido: Pedido;
+      rotaId: string;
+      embarqueId: string;
+      desembarqueId: string;
+    }) => {
+      if (!pedido.passageiro_id) throw new Error("O pedido não tem um passageiro associado.");
+
+      const { data: existente, error: consultaError } = await supabase
+        .from("viagens_passageiro")
+        .select("id")
+        .eq("rota_id", rotaId)
+        .eq("passageiro_id", pedido.passageiro_id)
+        .limit(1)
+        .maybeSingle();
+      if (consultaError) throw consultaError;
+
+      if (!existente) {
+        const { error: viagemError } = await supabase.from("viagens_passageiro").insert({
+          rota_id: rotaId,
+          passageiro_id: pedido.passageiro_id,
+          paragem_embarque_id: embarqueId,
+          paragem_desembarque_id: desembarqueId,
+        });
+        if (viagemError) throw viagemError;
+      }
+
+      const { error: pedidoError } = await supabase
         .from("pedidos_transporte")
         .update({ rota_id: rotaId, estado: "alocado" })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", pedido.id);
+      if (pedidoError) throw pedidoError;
     },
     onSuccess: () => {
-      toast.success("Pedido alocado à rota");
+      toast.success("Pedido alocado e bilhete QR gerado");
       qc.invalidateQueries({ queryKey: ["pedidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["viagens"] });
+      qc.invalidateQueries({ queryKey: ["reconciliacao"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -111,21 +169,19 @@ export function PedidosOperador() {
       <Card>
         <CardHeader>
           <CardTitle>Pedidos de transporte</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Pedidos enviados pelos passageiros para análise, aprovação e alocação.
-          </p>
+          <p className="text-sm text-muted-foreground">Pedidos enviados pelos passageiros para análise, aprovação e alocação.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {isLoading && <p className="text-sm text-muted-foreground">A carregar pedidos...</p>}
           {error && <p className="text-sm text-destructive">Não foi possível carregar os pedidos: {(error as Error).message}</p>}
-          {!isLoading && !error && !pedidos?.length && (
-            <p className="text-sm text-muted-foreground">Ainda não existem pedidos.</p>
-          )}
+          {!isLoading && !error && !pedidos?.length && <p className="text-sm text-muted-foreground">Ainda não existem pedidos.</p>}
 
           {pedidos?.map((pedido) => {
             const proximos = PROXIMOS[pedido.estado] ?? [];
             const rotaSelecionada = rotaPorPedido[pedido.id] ?? pedido.rota_id ?? "";
             const rota = pedido.rota_id ? rotaPorId.get(pedido.rota_id) : null;
+            const embarqueSelecionado = embarquePorPedido[pedido.id] ?? "";
+            const desembarqueSelecionado = desembarquePorPedido[pedido.id] ?? "";
 
             return (
               <div key={pedido.id} className="space-y-3 rounded-lg border p-4">
@@ -154,28 +210,71 @@ export function PedidosOperador() {
 
                 <div className="flex flex-wrap items-end gap-3 border-t pt-3">
                   {pedido.estado === "aprovado" && (
-                    <div className="min-w-[240px] space-y-2">
-                      <Label>Alocar à rota</Label>
-                      <select
-                        className="h-9 w-full rounded-md border bg-background px-2 text-sm"
-                        value={rotaSelecionada}
-                        onChange={(e) => setRotaPorPedido((prev) => ({ ...prev, [pedido.id]: e.target.value }))}
-                      >
-                        <option value="">— seleccionar rota —</option>
-                        {rotas?.filter((r) => !["concluida", "cancelada"].includes(r.estado)).map((r) => (
-                          <option key={r.id} value={r.id}>{r.nome} · {ESTADOS[r.estado] ?? r.estado}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <>
+                      <div className="min-w-[240px] space-y-2">
+                        <Label>Alocar à rota</Label>
+                        <select
+                          className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                          value={rotaSelecionada}
+                          onChange={(e) => {
+                            const novaRotaId = e.target.value;
+                            setRotaPorPedido((prev) => ({ ...prev, [pedido.id]: novaRotaId }));
+                            setEmbarquePorPedido((prev) => ({ ...prev, [pedido.id]: "" }));
+                            setDesembarquePorPedido((prev) => ({ ...prev, [pedido.id]: "" }));
+                            if (novaRotaId) {
+                              const novaRota = rotaPorId.get(novaRotaId);
+                              if (novaRota) prepararParagens(pedido, novaRota);
+                            }
+                          }}
+                        >
+                          <option value="">— seleccionar rota —</option>
+                          {rotas?.filter((r) => !["concluida", "cancelada"].includes(r.estado)).map((r) => (
+                            <option key={r.id} value={r.id}>{r.nome} · {ESTADOS_ROTA[r.estado] ?? r.estado}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {rotaSelecionada && (
+                        <>
+                          <div className="min-w-[220px] space-y-2">
+                            <Label>Embarque</Label>
+                            <select
+                              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                              value={embarqueSelecionado}
+                              onChange={(e) => setEmbarquePorPedido((prev) => ({ ...prev, [pedido.id]: e.target.value }))}
+                            >
+                              <option value="">— seleccionar paragem —</option>
+                              {[...(rotaPorId.get(rotaSelecionada)?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem).map((p) => (
+                                <option key={p.id} value={p.id}>{p.ordem}. {p.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="min-w-[220px] space-y-2">
+                            <Label>Desembarque</Label>
+                            <select
+                              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                              value={desembarqueSelecionado}
+                              onChange={(e) => setDesembarquePorPedido((prev) => ({ ...prev, [pedido.id]: e.target.value }))}
+                            >
+                              <option value="">— seleccionar paragem —</option>
+                              {[...(rotaPorId.get(rotaSelecionada)?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem).map((p) => (
+                                <option key={p.id} value={p.id}>{p.ordem}. {p.nome}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </>
                   )}
 
                   {pedido.estado === "aprovado" && (
                     <Button
                       size="sm"
-                      disabled={!rotaSelecionada || alocar.isPending}
-                      onClick={() => alocar.mutate({ id: pedido.id, rotaId: rotaSelecionada })}
+                      disabled={!rotaSelecionada || !embarqueSelecionado || !desembarqueSelecionado || alocar.isPending}
+                      onClick={() => alocar.mutate({ pedido, rotaId: rotaSelecionada, embarqueId: embarqueSelecionado, desembarqueId: desembarqueSelecionado })}
                     >
-                      Alocar pedido
+                      Alocar e gerar bilhete QR
                     </Button>
                   )}
 
@@ -192,12 +291,7 @@ export function PedidosOperador() {
                   ))}
 
                   {pedido.estado === "alocado" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={alterarEstado.isPending}
-                      onClick={() => alterarEstado.mutate({ id: pedido.id, estado: "agendado" })}
-                    >
+                    <Button size="sm" variant="outline" disabled={alterarEstado.isPending} onClick={() => alterarEstado.mutate({ id: pedido.id, estado: "agendado" })}>
                       Marcar como agendado
                     </Button>
                   )}
