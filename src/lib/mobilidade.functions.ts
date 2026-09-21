@@ -95,6 +95,24 @@ export const validarQr = createServerFn({ method: "POST" })
 
     const nome = (viagem.passageiros as unknown as { nome: string } | null)?.nome ?? "Passageiro";
 
+    const { data: rota } = await supabase
+      .from("rotas")
+      .select("estado")
+      .eq("id", data.rotaId)
+      .maybeSingle();
+
+    if (!rota) {
+      return { ...(await registar(false, viagem.id, "Rota não encontrada.")), passageiro: nome };
+    }
+
+    if (data.tipo === "embarque" && rota.estado !== "embarque_aberto") {
+      return { ...(await registar(false, viagem.id, "O embarque não está aberto nesta rota.")), passageiro: nome };
+    }
+
+    if (data.tipo === "desembarque" && rota.estado !== "em_curso") {
+      return { ...(await registar(false, viagem.id, "O desembarque só pode ser registado durante a viagem.")), passageiro: nome };
+    }
+
     if (data.tipo === "embarque") {
       if (viagem.estado === "a_bordo")
         return { ...(await registar(false, viagem.id, "Embarque já efectuado.")), passageiro: nome };
