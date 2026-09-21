@@ -44,7 +44,6 @@ type Pedido = {
   rota_id: string | null;
   created_at: string;
   passageiros: { nome: string; contacto: string } | null;
-  rotas: { nome: string } | null;
 };
 
 export function PedidosOperador() {
@@ -56,7 +55,7 @@ export function PedidosOperador() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedidos_transporte")
-        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at, passageiros(nome, contacto), rotas(nome)")
+        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at, passageiros(nome, contacto)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Pedido[];
@@ -69,12 +68,13 @@ export function PedidosOperador() {
       const { data, error } = await supabase
         .from("rotas")
         .select("id, nome, estado, hora_inicio, hora_fim")
-        .not("estado", "in", "(concluida,cancelada)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
   });
+
+  const rotaPorId = new Map((rotas ?? []).map((rota) => [rota.id, rota]));
 
   const alterarEstado = useMutation({
     mutationFn: async ({ id, estado }: { id: string; estado: EstadoPedido }) => {
@@ -125,6 +125,7 @@ export function PedidosOperador() {
           {pedidos?.map((pedido) => {
             const proximos = PROXIMOS[pedido.estado] ?? [];
             const rotaSelecionada = rotaPorPedido[pedido.id] ?? pedido.rota_id ?? "";
+            const rota = pedido.rota_id ? rotaPorId.get(pedido.rota_id) : null;
 
             return (
               <div key={pedido.id} className="space-y-3 rounded-lg border p-4">
@@ -149,7 +150,7 @@ export function PedidosOperador() {
 
                 {pedido.tipo_viatura && <p className="text-sm"><span className="text-muted-foreground">Viatura:</span> {pedido.tipo_viatura}</p>}
                 {pedido.observacoes && <p className="text-sm"><span className="text-muted-foreground">Observações:</span> {pedido.observacoes}</p>}
-                {pedido.rotas?.nome && <p className="text-sm"><span className="text-muted-foreground">Rota:</span> {pedido.rotas.nome}</p>}
+                {pedido.rota_id && <p className="text-sm"><span className="text-muted-foreground">Rota:</span> {rota?.nome ?? pedido.rota_id}</p>}
 
                 <div className="flex flex-wrap items-end gap-3 border-t pt-3">
                   {pedido.estado === "aprovado" && (
@@ -161,7 +162,7 @@ export function PedidosOperador() {
                         onChange={(e) => setRotaPorPedido((prev) => ({ ...prev, [pedido.id]: e.target.value }))}
                       >
                         <option value="">— seleccionar rota —</option>
-                        {rotas?.map((r) => (
+                        {rotas?.filter((r) => !["concluida", "cancelada"].includes(r.estado)).map((r) => (
                           <option key={r.id} value={r.id}>{r.nome} · {ESTADOS[r.estado] ?? r.estado}</option>
                         ))}
                       </select>
