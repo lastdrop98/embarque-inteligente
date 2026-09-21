@@ -32,7 +32,7 @@ const CORES: Record<string, string> = {
 };
 
 function iconeVeiculo(estado?: string | null) {
-  const cor = CORES[estado ?? "inactivo"] ?? CORES.inactivo;
+  const cor = CORES[estado ?? "inactivo"] ?? CORES["inactivo"];
   return L.divIcon({
     className: "",
     html: `<div style="background:${cor};width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${cor}55"></div>`,
@@ -55,8 +55,12 @@ function AjustarVista({ pontos }: { pontos: Ponto[] }) {
   const map = useMap();
   useEffect(() => {
     if (!pontos.length) return;
-    if (pontos.length === 1) map.setView(pontos[0], 14);
-    else map.fitBounds(L.latLngBounds(pontos), { padding: [32, 32] });
+    if (pontos.length === 1) {
+      const [unico] = pontos;
+      if (unico) map.setView(unico, 14);
+    } else {
+      map.fitBounds(L.latLngBounds(pontos), { padding: [32, 32] });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, JSON.stringify(pontos)]);
   return null;

@@ -151,8 +151,12 @@ function SelecionarPapelPage() {
          * seleção desnecessária.
          */
         if (lista.length === 1) {
+          const unico = lista[0];
+
+          if (!unico) return;
+
           navigate({
-            to: INFORMACOES_PAPEL[lista[0]].rota,
+            to: INFORMACOES_PAPEL[unico].rota,
             replace: true,
           });
 
