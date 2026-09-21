@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import MapaVeiculos from "@/components/MapaVeiculos";
+import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -37,13 +38,15 @@ function OperadorPage() {
         <p className="text-sm text-muted-foreground">Rotas, paragens, passageiros e bilhetes QR.</p>
       </div>
       <Tabs defaultValue="rotas">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="rotas">Rotas</TabsTrigger>
           <TabsTrigger value="veiculos">Veículos</TabsTrigger>
           <TabsTrigger value="delegacoes">Delegações</TabsTrigger>
           <TabsTrigger value="passageiros">Passageiros</TabsTrigger>
           <TabsTrigger value="viagens">Atribuições</TabsTrigger>
         </TabsList>
+        <TabsContent value="pedidos" className="mt-6"><PedidosOperador /></TabsContent>
         <TabsContent value="rotas" className="mt-6"><Rotas /></TabsContent>
         <TabsContent value="veiculos" className="mt-6"><Veiculos /></TabsContent>
         <TabsContent value="delegacoes" className="mt-6"><Delegacoes /></TabsContent>
