@@ -635,7 +635,7 @@ function Viagens() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("viagens_passageiro")
-        .select("id, estado, token_qr, passageiros(nome), rotas(nome), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(nome)")
+        .select("id, estado, token_qr, created_at, passageiros(nome), rotas(nome), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -707,6 +707,7 @@ function Viagens() {
                 <span className="font-medium">{(v.passageiros as { nome: string } | null)?.nome}</span>
                 <span className="text-muted-foreground">{(v.rotas as { nome: string } | null)?.nome}</span>
                 <span className="text-muted-foreground">{(v.embarque as { nome: string } | null)?.nome}</span>
+                <span className="text-xs text-muted-foreground">Emitido: {new Date(v.created_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}</span>
                 <Badge variant={v.estado === "a_bordo" ? "default" : "secondary"}>{ESTADOS[v.estado]}</Badge>
                 <div className="ml-auto flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Ligação copiada"); }}>Copiar ligação</Button>
