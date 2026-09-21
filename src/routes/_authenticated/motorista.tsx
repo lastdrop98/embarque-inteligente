@@ -95,16 +95,13 @@ function MotoristaPage() {
       toast.error("Geolocalização não suportada neste dispositivo.");
       return;
     }
-    if (rota.estado === "embarque_fechado") {
+    if (rota.estado !== "em_curso") {
       const { error: erroRota } = await supabase.rpc("iniciar_rota_segura", { _rota_id: rota.id });
       if (erroRota) {
         toast.error(erroRota.message);
         return;
       }
       await qc.invalidateQueries({ queryKey: ["minhas-rotas"] });
-    } else if (rota.estado !== "em_curso") {
-      toast.error("A viagem só pode iniciar depois de fechar o embarque.");
-      return;
     }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
