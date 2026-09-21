@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { BilhetePass, type DadosBilhete } from "@/components/BilhetePass";
 import MapaVeiculos, { type PosVeiculo, type PosParagem } from "@/components/MapaVeiculos";
+import { PassageiroPedidos } from "@/components/PassageiroPedidos";
 
 export const Route = createFileRoute("/_authenticated/passageiro")({
   head: () => ({
@@ -35,7 +36,7 @@ function usePassageiroId(userId: string) {
   return useQuery({
     queryKey: ["meu-passageiro", userId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("passageiros").select("id, nome").eq("user_id", userId).maybeSingle();
+      const { data, error } = await supabase.from("passageiros").select("id, nome, categoria").eq("user_id", userId).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -145,7 +146,7 @@ function Conteudo({ userId }: { userId: string }) {
       )}
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Bilhetes activos</h2>
+        <h2 className="mb-3 text-lg font-semibold">Os meus bilhetes activos</h2>
         {activas.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activas.map((v) => (
@@ -158,7 +159,7 @@ function Conteudo({ userId }: { userId: string }) {
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Histórico</h2>
+        <h2 className="mb-3 text-lg font-semibold">Histórico de viagens</h2>
         {historico.length ? (
           <div className="space-y-3">
             {historico.map((v) => (
