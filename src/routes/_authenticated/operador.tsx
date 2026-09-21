@@ -378,10 +378,22 @@ function RotaCard({ rota }: { rota: RotaRow }) {
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
-      const { error } = await supabase.from("rotas").update({ estado: novoEstado as Database["public"]["Enums"]["estado_rota"] }).eq("id", rota.id);
+      if (novoEstado === "concluida") {
+        const { error } = await supabase.rpc("concluir_rota_segura", { _rota_id: rota.id });
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("rotas")
+        .update({ estado: novoEstado as Database["public"]["Enums"]["estado_rota"] })
+        .eq("id", rota.id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Estado da rota actualizado"); invalidate("rotas"); },
+    onSuccess: () => {
+      toast.success("Estado da rota actualizado");
+      invalidate("rotas", "reconciliacao", "viagens");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
