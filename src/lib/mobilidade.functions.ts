@@ -117,11 +117,11 @@ export const validarQr = createServerFn({ method: "POST" })
     if (data.paragemId && viagem.paragem_desembarque_id !== data.paragemId)
       return { ...(await registar(false, viagem.id, "Paragem de desembarque errada.")), passageiro: nome };
 
-    const { error } = await supabase
-      .from("viagens_passageiro")
-      .update({ estado: "concluida" })
-      .eq("id", viagem.id)
-      .eq("estado", "a_bordo");
+    const { error } = await supabase 
+  .from("viagens_passageiro") 
+  .update({ estado: "desembarcado" }) 
+  .eq("id", viagem.id) 
+  .eq("estado", "a_bordo");
     if (error) return { ...(await registar(false, viagem.id, "Não foi possível registar.")), passageiro: nome };
     return { ...(await registar(true, viagem.id)), passageiro: nome };
   });
