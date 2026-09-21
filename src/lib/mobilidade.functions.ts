@@ -105,7 +105,9 @@ export const validarQr = createServerFn({ method: "POST" })
       return { ...(await registar(false, viagem.id, "Rota não encontrada.")), passageiro: nome };
     }
 
-    if (data.tipo === "embarque" && rota.estado !== "embarque_aberto") {
+    // O motorista pode validar embarques enquanto a rota está em curso.
+    // Isto permite iniciar o turno/GPS antes de concluir o embarque de todos os passageiros.
+    if (data.tipo === "embarque" && !["embarque_aberto", "em_curso"].includes(rota.estado)) {
       return { ...(await registar(false, viagem.id, "O embarque não está aberto nesta rota.")), passageiro: nome };
     }
 
@@ -135,11 +137,11 @@ export const validarQr = createServerFn({ method: "POST" })
     if (data.paragemId && viagem.paragem_desembarque_id !== data.paragemId)
       return { ...(await registar(false, viagem.id, "Paragem de desembarque errada.")), passageiro: nome };
 
-    const { error } = await supabase 
-  .from("viagens_passageiro") 
-  .update({ estado: "desembarcado" }) 
-  .eq("id", viagem.id) 
-  .eq("estado", "a_bordo");
+    const { error } = await supabase
+      .from("viagens_passageiro")
+      .update({ estado: "desembarcado" })
+      .eq("id", viagem.id)
+      .eq("estado", "a_bordo");
     if (error) return { ...(await registar(false, viagem.id, "Não foi possível registar.")), passageiro: nome };
     return { ...(await registar(true, viagem.id)), passageiro: nome };
   });
