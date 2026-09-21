@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import MapaVeiculos from "@/components/MapaVeiculos";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/operador")({
   head: () => ({
@@ -367,7 +368,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
-      const { error } = await supabase.from("rotas").update({ estado: novoEstado }).eq("id", rota.id);
+      const { error } = await supabase.from("rotas").update({ estado: novoEstado as Database["public"]["Enums"]["estado_rota"] }).eq("id", rota.id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Estado da rota actualizado"); invalidate("rotas"); },
@@ -376,7 +377,11 @@ function RotaCard({ rota }: { rota: RotaRow }) {
 
   const marcarHoraReal = useMutation({
     mutationFn: async (campo: "hora_partida_real" | "hora_chegada_real") => {
-      const { error } = await supabase.from("rotas").update({ [campo]: new Date().toISOString() }).eq("id", rota.id);
+      const valores =
+        campo === "hora_partida_real"
+          ? { hora_partida_real: new Date().toISOString() }
+          : { hora_chegada_real: new Date().toISOString() };
+      const { error } = await supabase.from("rotas").update(valores).eq("id", rota.id);
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Hora real registada"); invalidate("rotas"); },
@@ -534,7 +539,7 @@ function Passageiros() {
       const { error } = await supabase.from("passageiros").insert({
         nome,
         contacto,
-        categoria,
+        categoria: categoria as Database["public"]["Enums"]["categoria_passageiro"],
         delegacao_id: delegacaoId || null,
       });
       if (error) throw error;

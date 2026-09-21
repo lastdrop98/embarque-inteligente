@@ -92,7 +92,7 @@ export function useSessao() {
       let papel: Papel | null = null;
 
       if (papeisUnicos.length === 1) {
-        papel = papeisUnicos[0];
+        papel = papeisUnicos[0] ?? null;
       } else if (papeisUnicos.length > 1) {
         const armazenado =
           sessionStorage.getItem("papel_sessao");

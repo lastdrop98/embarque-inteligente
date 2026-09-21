@@ -206,7 +206,11 @@ function AuthPage() {
      * podemos entrar directamente no painel correspondente.
      */
     if (lista.length === 1) {
-      const rota = ROTAS_POR_PAPEL[lista[0]];
+      const unico = lista[0];
+
+      if (!unico) return;
+
+      const rota = ROTAS_POR_PAPEL[unico];
 
       navigate({
         to: rota,

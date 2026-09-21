@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/pedidos")({
   head: () => ({
@@ -143,7 +144,7 @@ function NovoPedido({ userId }: { userId: string }) {
         data_viagem: dataViagem,
         hora: hora || null,
         num_passageiros: Number(numPassageiros) || 1,
-        categoria: categoria as Pedido["categoria"],
+        categoria: categoria as Database["public"]["Enums"]["categoria_passageiro"],
         delegacao_id: delegacaoId === "nenhuma" ? null : delegacaoId,
         tipo_viatura: tipoViatura || null,
         observacoes: observacoes || null,
@@ -282,7 +283,10 @@ function Lista({ gestao }: { gestao: boolean }) {
 
   const actualizar = useMutation({
     mutationFn: async ({ id, campos }: { id: string; campos: Record<string, unknown> }) => {
-      const { error } = await supabase.from("pedidos_transporte").update(campos).eq("id", id);
+      const { error } = await supabase
+        .from("pedidos_transporte")
+        .update(campos as Database["public"]["Tables"]["pedidos_transporte"]["Update"])
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

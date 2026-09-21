@@ -86,7 +86,8 @@ function MotoristaPage() {
 
   // ---- Localização em tempo real ----
   async function iniciarTurno() {
-    if (!rota?.veiculo_id) {
+    const veiculoId = rota?.veiculo_id;
+    if (!veiculoId) {
       toast.error("Esta rota não tem veículo atribuído.");
       return;
     }
@@ -104,7 +105,7 @@ function MotoristaPage() {
             posicao_updated_at: new Date().toISOString(),
             estado: "em_rota",
           })
-          .eq("id", rota.veiculo_id);
+          .eq("id", veiculoId);
       },
       (err) => {
         console.error("[motorista] geolocation error:", err);
@@ -187,7 +188,7 @@ function MotoristaPage() {
       if (!incidenteAberto || !rota) return;
       const { error } = await supabase.from("incidentes").insert({
         rota_id: rota.id,
-        motorista_id: (await supabase.auth.getUser()).data.user?.id,
+        motorista_id: (await supabase.auth.getUser()).data.user?.id ?? null,
         tipo: incidenteAberto,
         descricao: descIncidente ? `${incidenteAberto}: ${descIncidente}` : incidenteAberto,
       });

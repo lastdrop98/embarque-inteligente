@@ -149,7 +149,7 @@ function rotaPermitidaParaPapel(
 
 function redirecionarParaPapel(
   papel: Papel
-) {
+): never {
   const rota = ROTA_POR_PAPEL[papel];
 
   switch (rota) {
@@ -247,12 +247,16 @@ export const Route = createFileRoute(
      * entra directamente nesse papel.
      */
     if (roles.length === 1) {
-      papelSessao = roles[0];
+      const unico = roles[0];
 
-      sessionStorage.setItem(
-        "papel_sessao",
-        papelSessao
-      );
+      if (unico) {
+        papelSessao = unico;
+
+        sessionStorage.setItem(
+          "papel_sessao",
+          unico
+        );
+      }
     }
 
     /*
@@ -346,7 +350,7 @@ function Layout() {
     data?.papeis?.length === 1
   ) {
     papelAtual =
-      data.papeis[0];
+      data.papeis[0] ?? null;
   }
 
   else if (
