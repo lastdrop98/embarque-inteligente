@@ -385,19 +385,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const marcarHoraReal = useMutation({
-    mutationFn: async (campo: "hora_partida_real" | "hora_chegada_real") => {
-      const valores =
-        campo === "hora_partida_real"
-          ? { hora_partida_real: new Date().toISOString() }
-          : { hora_chegada_real: new Date().toISOString() };
-      const { error } = await supabase.from("rotas").update(valores).eq("id", rota.id);
-      if (error) throw error;
-    },
-    onSuccess: () => { toast.success("Hora real registada"); invalidate("rotas"); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
   const fecharEmbarque = useMutation({
     mutationFn: async () => {
       const { error } = await supabase
@@ -464,12 +451,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Planeado: {rota.hora_inicio?.slice(0, 5) ?? "—"} → {rota.hora_fim?.slice(0, 5) ?? "—"}</span>
           <span>Real: {rota.hora_partida_real ? new Date(rota.hora_partida_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"} → {rota.hora_chegada_real ? new Date(rota.hora_chegada_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
-          <Button size="sm" variant="ghost" disabled={!!rota.hora_partida_real || marcarHoraReal.isPending} onClick={() => marcarHoraReal.mutate("hora_partida_real")}>
-            Marcar partida real
-          </Button>
-          <Button size="sm" variant="ghost" disabled={!!rota.hora_chegada_real || marcarHoraReal.isPending} onClick={() => marcarHoraReal.mutate("hora_chegada_real")}>
-            Marcar chegada real
-          </Button>
         </div>
 
         <MapaVeiculos
