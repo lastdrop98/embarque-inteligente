@@ -12,6 +12,7 @@ export type DadosBilhete = {
   horaEmbarque?: string | null;
   paragemDesembarque?: string | null;
   estado: "pendente" | "a_bordo" | "concluida" | "recusada" | string;
+  emitidoEm?: string | null;
 };
 
 const ESTADO_INFO: Record<string, { rotulo: string; cor: string }> = {
@@ -52,6 +53,12 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Desembarque</p>
             <p className="font-medium">{dados.paragemDesembarque ?? "—"}</p>
           </div>
+          {dados.emitidoEm && (
+            <div className="col-span-2 border-t pt-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Bilhete emitido em</p>
+              <p className="font-medium">{new Date(dados.emitidoEm).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}</p>
+            </div>
+          )}
           {dados.veiculo && (
             <div className="col-span-2 border-t pt-2">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Veículo</p>
