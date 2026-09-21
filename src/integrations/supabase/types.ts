@@ -203,6 +203,7 @@ export type Database = {
           id: string
           nome: string
           user_id: string | null
+          vip: boolean
         }
         Insert: {
           categoria?: Database["public"]["Enums"]["categoria_passageiro"]
@@ -212,6 +213,7 @@ export type Database = {
           id?: string
           nome: string
           user_id?: string | null
+          vip?: boolean
         }
         Update: {
           categoria?: Database["public"]["Enums"]["categoria_passageiro"]
@@ -221,6 +223,7 @@ export type Database = {
           id?: string
           nome?: string
           user_id?: string | null
+          vip?: boolean
         }
         Relationships: [
           {
@@ -369,6 +372,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           motivo_recusa: string | null
           registado_por: string | null
           resultado: Database["public"]["Enums"]["resultado_registo"]
@@ -379,6 +384,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           motivo_recusa?: string | null
           registado_por?: string | null
           resultado: Database["public"]["Enums"]["resultado_registo"]
@@ -389,6 +396,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           motivo_recusa?: string | null
           registado_por?: string | null
           resultado?: Database["public"]["Enums"]["resultado_registo"]
@@ -416,6 +425,8 @@ export type Database = {
       rotas: {
         Row: {
           created_at: string
+          distancia_km: number | null
+          embarque_fechado: boolean
           estado: Database["public"]["Enums"]["estado_rota"]
           hora_chegada_real: string | null
           hora_fim: string | null
@@ -425,10 +436,13 @@ export type Database = {
           motorista_id: string | null
           nome: string
           passageiros_previstos: number | null
+          pedido_id: string | null
           veiculo_id: string | null
         }
         Insert: {
           created_at?: string
+          distancia_km?: number | null
+          embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
           hora_chegada_real?: string | null
           hora_fim?: string | null
@@ -438,10 +452,13 @@ export type Database = {
           motorista_id?: string | null
           nome: string
           passageiros_previstos?: number | null
+          pedido_id?: string | null
           veiculo_id?: string | null
         }
         Update: {
           created_at?: string
+          distancia_km?: number | null
+          embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
           hora_chegada_real?: string | null
           hora_fim?: string | null
@@ -451,9 +468,17 @@ export type Database = {
           motorista_id?: string | null
           nome?: string
           passageiros_previstos?: number | null
+          pedido_id?: string | null
           veiculo_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "rotas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos_transporte"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rotas_veiculo_id_fkey"
             columns: ["veiculo_id"]
