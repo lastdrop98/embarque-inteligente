@@ -224,6 +224,16 @@ const COR_ESTADO_ROTA: Record<string, "default" | "secondary" | "destructive" | 
   cancelada: "destructive",
 };
 
+const TRANSICOES_ROTA: Record<string, string[]> = {
+  rascunho: ["agendada", "cancelada"],
+  agendada: ["embarque_aberto", "cancelada"],
+  embarque_aberto: ["embarque_fechado", "cancelada"],
+  embarque_fechado: ["em_curso", "cancelada"],
+  em_curso: ["concluida"],
+  concluida: [],
+  cancelada: [],
+};
+
 function useRotas() {
   return useQuery({
     queryKey: ["rotas"],
@@ -407,6 +417,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   });
 
   const sobrelotada = rota.veiculos && reconciliacao && reconciliacao.embarcados > rota.veiculos.lugares;
+  const proximosEstados = TRANSICOES_ROTA[rota.estado] ?? [];
 
   return (
     <Card>
@@ -419,11 +430,12 @@ function RotaCard({ rota }: { rota: RotaRow }) {
           <select
             className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
             value={rota.estado}
-            disabled={mudarEstado.isPending}
+            disabled={mudarEstado.isPending || proximosEstados.length === 0}
             onChange={(e) => mudarEstado.mutate(e.target.value)}
           >
-            {Object.entries(ESTADOS_ROTA).map(([valor, rotulo]) => (
-              <option key={valor} value={valor}>{rotulo}</option>
+            <option value={rota.estado}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</option>
+            {proximosEstados.map((valor) => (
+              <option key={valor} value={valor}>{ESTADOS_ROTA[valor] ?? valor}</option>
             ))}
           </select>
         </CardTitle>
@@ -441,7 +453,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
             size="sm"
             variant="outline"
             className="ml-auto"
-            disabled={fecharEmbarque.isPending || rota.estado === "embarque_fechado"}
+            disabled={fecharEmbarque.isPending || rota.estado !== "embarque_aberto"}
             onClick={() => fecharEmbarque.mutate()}
           >
             Fechar embarque
