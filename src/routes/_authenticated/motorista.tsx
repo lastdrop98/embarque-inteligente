@@ -63,7 +63,12 @@ function MotoristaPage() {
     refetchInterval: 10000,
   });
 
-  const rota = rotas?.find((r) => r.id === rotaId) ?? rotas?.[0];
+  // Mostra por defeito apenas rotas operacionais. Evita seleccionar automaticamente
+  // uma rota antiga já concluída/cancelada e apresentar uma mensagem enganadora.
+  const rotasOperacionais = (rotas ?? []).filter((r) =>
+    ["agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(r.estado),
+  );
+  const rota = rotasOperacionais.find((r) => r.id === rotaId) ?? rotasOperacionais[0];
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const proximaParagem = paragemId ? paragens.find((p) => p.id === paragemId) : paragens[0];
 
@@ -263,7 +268,7 @@ function MotoristaPage() {
         )}
       </div>
 
-      {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não tem rotas atribuídas.</p>}
+      {!rotasOperacionais.length && <p className="text-sm text-muted-foreground">Não existem rotas operacionais atribuídas neste momento.</p>}
 
       {lotado && (
         <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
@@ -285,7 +290,7 @@ function MotoristaPage() {
                   value={rota.id}
                   onChange={(e) => { setRotaId(e.target.value); setParagemId(""); }}
                 >
-                  {rotas?.map((r) => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                  {rotasOperacionais.map((r) => <option key={r.id} value={r.id}>{r.nome} · {r.estado.replaceAll("_", " ")}</option>)}
                 </select>
               </div>
               <div className="space-y-2">
