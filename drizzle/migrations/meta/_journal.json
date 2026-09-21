@@ -8,6 +8,13 @@
       "when": 1789715425287,
       "tag": "0000_create_pedidos_transporte",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789980153902,
+      "tag": "0001_garantir_valores_estado_viagem",
+      "breakpoints": true
     }
   ]
 }
