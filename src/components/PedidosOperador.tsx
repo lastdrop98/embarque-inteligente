@@ -130,24 +130,16 @@ export function PedidosOperador() {
     }) => {
       if (!pedido.passageiro_id) throw new Error("O pedido não tem um passageiro associado.");
 
-      const { data: existente, error: consultaError } = await supabase
-        .from("viagens_passageiro")
-        .select("id")
-        .eq("rota_id", rotaId)
-        .eq("passageiro_id", pedido.passageiro_id)
-        .limit(1)
-        .maybeSingle();
-      if (consultaError) throw consultaError;
-
-      if (!existente) {
-        const { error: viagemError } = await supabase.from("viagens_passageiro").insert({
-          rota_id: rotaId,
-          passageiro_id: pedido.passageiro_id,
-          paragem_embarque_id: embarqueId,
-          paragem_desembarque_id: desembarqueId,
-        });
-        if (viagemError) throw viagemError;
-      }
+      // Cada pedido aprovado/alocado representa uma viagem própria.
+      // Não reutilizamos uma viagem anterior do mesmo passageiro na mesma rota:
+      // cada nova solicitação deve gerar um novo bilhete QR.
+      const { error: viagemError } = await supabase.from("viagens_passageiro").insert({
+        rota_id: rotaId,
+        passageiro_id: pedido.passageiro_id,
+        paragem_embarque_id: embarqueId,
+        paragem_desembarque_id: desembarqueId,
+      });
+      if (viagemError) throw viagemError;
 
       const { error: pedidoError } = await supabase
         .from("pedidos_transporte")
