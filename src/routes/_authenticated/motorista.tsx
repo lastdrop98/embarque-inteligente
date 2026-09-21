@@ -156,6 +156,23 @@ function MotoristaPage() {
   }
 
   useEffect(() => {
+    if (!rota?.veiculo_id) return;
+
+    const canal = supabase
+      .channel("posicao-veiculo-motorista-" + rota.veiculo_id)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "veiculos", filter: `id=eq.${rota.veiculo_id}` },
+        () => qc.invalidateQueries({ queryKey: ["minhas-rotas"] }),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, [rota?.veiculo_id, qc]);
+
+  useEffect(() => {
     return () => {
       if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
     };
