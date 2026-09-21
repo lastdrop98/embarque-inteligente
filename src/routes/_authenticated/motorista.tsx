@@ -96,16 +96,12 @@ function MotoristaPage() {
       return;
     }
     if (rota.estado === "embarque_fechado") {
-      const { error: erroRota } = await supabase
-        .from("rotas")
-        .update({ estado: "em_curso" })
-        .eq("id", rota.id)
-        .eq("estado", "embarque_fechado");
+      const { error: erroRota } = await supabase.rpc("iniciar_rota_segura", { _rota_id: rota.id });
       if (erroRota) {
         toast.error(erroRota.message);
         return;
       }
-      qc.invalidateQueries({ queryKey: ["minhas-rotas"] });
+      await qc.invalidateQueries({ queryKey: ["minhas-rotas"] });
     } else if (rota.estado !== "em_curso") {
       toast.error("A viagem só pode iniciar depois de fechar o embarque.");
       return;
