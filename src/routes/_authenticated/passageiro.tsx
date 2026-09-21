@@ -111,6 +111,7 @@ function Conteudo({ userId }: { userId: string }) {
     horaEmbarque: v.embarque?.hora_prevista ?? null,
     paragemDesembarque: v.desembarque?.nome ?? null,
     estado: v.estado,
+    emitidoEm: v.created_at,
   });
 
   const proximaComVeiculo = activas.find((v) => v.rotas?.veiculos?.latitude != null);
