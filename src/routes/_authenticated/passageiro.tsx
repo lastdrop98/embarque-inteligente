@@ -72,7 +72,8 @@ function Conteudo({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!passageiro?.id) return;
-    const canal = supabase
+
+    const canalViagens = supabase
       .channel("minhas-viagens-" + passageiro.id)
       .on(
         "postgres_changes",
@@ -80,8 +81,26 @@ function Conteudo({ userId }: { userId: string }) {
         () => qc.invalidateQueries({ queryKey: ["minhas-viagens", passageiro.id] }),
       )
       .subscribe();
+
+    const canalVeiculos = supabase
+      .channel("posicao-veiculos-" + passageiro.id)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "veiculos" },
+        (payload) => {
+          const viagemActiva = (qc.getQueryData<ViagemRow[]>(["minhas-viagens", passageiro.id]) ?? []).some(
+            (v) => v.estado === "pendente" || v.estado === "a_bordo"
+          );
+          if (viagemActiva) {
+            qc.invalidateQueries({ queryKey: ["minhas-viagens", passageiro.id] });
+          }
+        },
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(canal);
+      supabase.removeChannel(canalViagens);
+      supabase.removeChannel(canalVeiculos);
     };
   }, [passageiro?.id, qc]);
 
