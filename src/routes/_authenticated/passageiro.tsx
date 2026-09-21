@@ -126,9 +126,9 @@ function Conteudo({ userId }: { userId: string }) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Os meus bilhetes</h1>
-        <p className="text-sm text-muted-foreground">Bilhetes activos e histórico de viagens.</p>
-      </div>
+        <h1 className="text-2xl font-bold tracking-tight">Área do Passageiro</h1>
+        <p className="text-sm text-muted-foreground">Solicite transporte, acompanhe pedidos e consulte os seus bilhetes.</p>
+      </div>\n      <PassageiroPedidos\n        passageiro={{ id: passageiro.id, nome: passageiro.nome, categoria: passageiro.categoria }}\n        userId={userId}\n      />
 
       {proximaComVeiculo?.rotas?.veiculos && (
         <Card>
