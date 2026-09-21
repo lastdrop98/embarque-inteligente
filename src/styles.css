@@ -4,20 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -48,7 +34,6 @@
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-ring-offset-background: var(--background);
-
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -104,7 +89,6 @@
   --shadow-panel: 0 12px 32px -16px oklch(0.24 0.06 258 / 0.45);
 }
 
-
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -149,4 +133,22 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+}
+
+/* Esconder a badge de edição do Lovable */
+[data-lovable-badge],
+#lovable-badge,
+.lovable-badge,
+iframe[src*="lovable"],
+a[href*="lovable.dev"],
+div[class*="lovable-badge"],
+div[id*="lovable-badge"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  overflow: hidden !important;
 }
