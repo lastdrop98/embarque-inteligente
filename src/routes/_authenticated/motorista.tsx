@@ -54,9 +54,16 @@ function MotoristaPage() {
     queryKey: ["minhas-rotas"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("rotas")
-        .select("id, nome, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
-        .order("created_at");
+        (() => {
+        return supabase.auth.getUser().then(async ({ data: { user } }) => {
+          if (!user) throw new Error("Utilizador não autenticado.");
+          return supabase
+            .from("rotas")
+            .select("id, nome, motorista_id, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
+            .eq("motorista_id", user.id)
+            .order("created_at");
+        });
+      })();
       if (error) throw error;
       return data;
     },
@@ -66,7 +73,7 @@ function MotoristaPage() {
   // Mostra por defeito apenas rotas operacionais. Evita seleccionar automaticamente
   // uma rota antiga já concluída/cancelada e apresentar uma mensagem enganadora.
   const rotasOperacionais = (rotas ?? []).filter((r) =>
-    ["agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(r.estado),
+    ["rascunho", "agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(r.estado),
   );
   const rota = rotasOperacionais.find((r) => r.id === rotaId) ?? rotasOperacionais[0];
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
@@ -268,7 +275,7 @@ function MotoristaPage() {
         )}
       </div>
 
-      {!rotasOperacionais.length && <p className="text-sm text-muted-foreground">Não existem rotas operacionais atribuídas neste momento.</p>}
+      {!rotasOperacionais.length && <p className="text-sm text-muted-foreground">Não existem rotas atribuídas a este motorista neste momento.</p>}
 
       {lotado && (
         <div className="rounded-lg border border-destructive bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
