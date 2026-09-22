@@ -14,7 +14,7 @@ import { PassageiroPedidos } from "@/components/PassageiroPedidos";
 export const Route = createFileRoute("/_authenticated/passageiro")({
   head: () => ({
     meta: [
-      { title: "Os meus bilhetes — Rotas & Embarque QR" },
+      { title: "Os meus bilhetes — PickApp Mobility" },
       { name: "description", content: "Bilhetes activos, histórico de viagens e acompanhamento em tempo real." },
     ],
   }),
