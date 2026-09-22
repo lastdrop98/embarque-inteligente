@@ -384,10 +384,10 @@ function Layout() {
       <main className="relative mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 -z-0 overflow-hidden opacity-[0.055]"
+          className="pointer-events-none absolute inset-0 -z-0 overflow-hidden opacity-[0.13]"
           style={{
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1800&q=75')",
+              "url('https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1800&q=80')",
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
