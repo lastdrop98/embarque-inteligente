@@ -44,7 +44,6 @@ const ROTAS_POR_PAPEL: Record<Papel, string> = {
   motorista: "/motorista",
   passageiro: "/passageiro",
   responsavel_grupo: "/grupo",
-  responsavel_grupo: "/grupo",
 };
 
 export const Route = createFileRoute("/auth")({
