@@ -313,3 +313,28 @@ div[id*="lovable-badge"] {
     padding: 1.25rem;
   }
 }
+
+
+/* Contraste garantido para navegação e acções da plataforma. */
+.app-header-contrast,
+.app-header-contrast a,
+.app-header-contrast button {
+  color: #ffffff !important;
+}
+.app-header-contrast a:hover {
+  color: #ffffff !important;
+}
+.app-login-button {
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 2px solid rgba(255,255,255,.9) !important;
+  position: relative !important;
+  z-index: 50 !important;
+}
+.app-login-button svg {
+  color: #0f172a !important;
+  stroke: currentColor !important;
+}
