@@ -394,8 +394,15 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         .select("id", { count: "exact", head: true })
         .eq("rota_id", rota.id);
       if (countError) throw countError;
-      if ((count ?? 0) > 0) {
-        throw new Error("Esta rota já possui atribuições/bilhetes e não pode ser eliminada. Use 'cancelada' para a retirar da operação.");
+      // Rotas concluídas podem ser removidas juntamente com o seu histórico de bilhetes.
+      // Rotas em rascunho/canceladas só podem ser removidas se não tiverem atribuições.
+      if ((count ?? 0) > 0 && rota.estado !== "concluida") {
+        throw new Error("Esta rota já possui atribuições/bilhetes e não pode ser eliminada. Uma rota em operação deve ser cancelada; apenas rotas concluídas podem ser removidas com o histórico.");
+      }
+
+      if (rota.estado === "concluida" && (count ?? 0) > 0) {
+        const { error: viagensError } = await supabase.from("viagens_passageiro").delete().eq("rota_id", rota.id);
+        if (viagensError) throw viagensError;
       }
 
       const { error: paragensError } = await supabase.from("paragens").delete().eq("rota_id", rota.id);
@@ -493,10 +500,12 @@ function RotaCard({ rota }: { rota: RotaRow }) {
                 size="sm"
                 variant="destructive"
                 className="h-8"
-                disabled={eliminarRota.isPending || !["rascunho", "cancelada"].includes(rota.estado)}
-                title={rota.estado === "rascunho" || rota.estado === "cancelada" ? "Eliminar rota" : "A rota só pode ser eliminada quando está em rascunho ou cancelada e não possui atribuições"}
+                disabled={eliminarRota.isPending || !["rascunho", "cancelada", "concluida"].includes(rota.estado)}
+                title={rota.estado === "concluida" ? "Eliminar rota concluída e o seu histórico de bilhetes" : rota.estado === "rascunho" || rota.estado === "cancelada" ? "Eliminar rota" : "A rota só pode ser eliminada quando está em rascunho, cancelada ou concluída"}
                 onClick={() => {
-                  if (window.confirm(`Eliminar a rota "${rota.nome}"? Esta acção não pode ser desfeita.`)) eliminarRota.mutate();
+                  if (window.confirm(rota.estado === "concluida"
+                    ? `Eliminar a rota concluída "${rota.nome}"? Os bilhetes/atribuições e as paragens desta rota também serão eliminados. Esta acção não pode ser desfeita.`
+                    : `Eliminar a rota "${rota.nome}"? Esta acção não pode ser desfeita.`)) eliminarRota.mutate();
                 }}
               ><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
               <select
