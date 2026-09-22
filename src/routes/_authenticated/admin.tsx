@@ -112,7 +112,15 @@ function AdminPage() {
   } = useSessao();
 
   if (aCarregarSessao) {
-    return null;
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="rounded-2xl border bg-card px-8 py-7 text-center shadow-sm">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+          <p className="mt-4 text-base font-semibold text-foreground">A carregar administração…</p>
+          <p className="mt-1 text-sm text-muted-foreground">A verificar a sessão e as permissões.</p>
+        </div>
+      </div>
+    );
   }
 
   if (sessao?.papel !== "admin") {
