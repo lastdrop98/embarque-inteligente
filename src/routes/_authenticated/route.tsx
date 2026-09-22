@@ -25,13 +25,15 @@ type Rota =
   | "/admin"
   | "/operador"
   | "/motorista"
-  | "/passageiro";
+  | "/passageiro"
+  | "/grupo";
 
 const PAPEIS_VALIDOS: Papel[] = [
   "admin",
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTA_POR_PAPEL: Record<Papel, Rota> = {
@@ -39,6 +41,7 @@ const ROTA_POR_PAPEL: Record<Papel, Rota> = {
   operador: "/operador",
   motorista: "/motorista",
   passageiro: "/passageiro",
+  responsavel_grupo: "/grupo",
 };
 
 const LINKS_POR_PAPEL: Record<
@@ -82,6 +85,13 @@ const LINKS_POR_PAPEL: Record<
     {
       to: "/passageiro",
       label: "Os meus bilhetes",
+    },
+  ],
+
+  responsavel_grupo: [
+    {
+      to: "/grupo",
+      label: "Responsável de Grupo",
     },
   ],
 };
@@ -143,6 +153,9 @@ function rotaPermitidaParaPapel(
         pathname === "/passageiro" ||
         pathname.startsWith("/passageiro/")
       );
+
+    case "responsavel_grupo":
+      return pathname === "/grupo" || pathname.startsWith("/grupo/");
 
     default:
       return false;
@@ -509,6 +522,9 @@ function Layout() {
 
               {papelAtual === "passageiro" &&
                 "Passageiro"}
+
+              {papelAtual === "responsavel_grupo" &&
+                "Resp. Grupo"}
             </span>
           )}
 
