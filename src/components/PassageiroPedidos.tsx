@@ -30,14 +30,27 @@ const ESTADOS_PEDIDO: Record<string, { label: string; variant: "default" | "seco
 export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passageiro; userId: string }) {
   const qc = useQueryClient();
   const hoje = new Date().toISOString().slice(0, 10);
-  const [titulo, setTitulo] = useState("");
   const [dataViagem, setDataViagem] = useState(hoje);
-  const [hora, setHora] = useState("");
   const [origem, setOrigem] = useState("");
   const [destino, setDestino] = useState("");
-  const [numPassageiros, setNumPassageiros] = useState(1);
-  const [tipoViatura, setTipoViatura] = useState("");
-  const [observacoes, setObservacoes] = useState("");
+
+  const { data: pontos } = useQuery({
+    queryKey: ["pontos-embarque-predefinidos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("paragens")
+        .select("id, nome")
+        .order("nome");
+      if (error) throw error;
+      const vistos = new Set<string>();
+      return (data ?? []).filter((p) => {
+        const chave = p.nome.trim().toLowerCase();
+        if (vistos.has(chave)) return false;
+        vistos.add(chave);
+        return true;
+      });
+    },
+  });
 
   const { data: pedidos } = useQuery({
     queryKey: ["meus-pedidos-transporte", passageiro.id],
@@ -54,17 +67,31 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
 
   const criarPedido = useMutation({
     mutationFn: async () => {
+      if (!origem || !destino) throw new Error("Escolha a origem e o destino.");
+      if (origem === destino) throw new Error("A origem e o destino devem ser diferentes.");
+
+      const { data: existentes, error: erroExistente } = await supabase
+        .from("pedidos_transporte")
+        .select("id")
+        .eq("passageiro_id", passageiro.id)
+        .in("estado", ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"])
+        .limit(1);
+      if (erroExistente) throw erroExistente;
+      if (existentes?.length) {
+        throw new Error("Já possui um pedido de viagem activo. Cancele o pedido actual antes de solicitar outra viagem.");
+      }
+
       const { data, error } = await supabase
         .from("pedidos_transporte")
         .insert({
-          titulo: titulo.trim() || `Pedido de transporte — ${dataViagem}`,
+          titulo: `Viagem de ${passageiro.nome} — ${dataViagem}`,
           data_viagem: dataViagem,
-          hora: hora || null,
+          hora: null,
           origem: origem.trim(),
           destino: destino.trim(),
-          num_passageiros: numPassageiros,
-          tipo_viatura: tipoViatura.trim() || null,
-          observacoes: observacoes.trim() || null,
+          num_passageiros: 1,
+          tipo_viatura: null,
+          observacoes: null,
           categoria: passageiro.categoria,
           passageiro_id: passageiro.id,
           criado_por: userId,
@@ -74,25 +101,17 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         .single();
       if (error) throw error;
 
-      // A notificação não deve impedir a criação do pedido.
       try {
-        const { error: notifError } = await supabase.rpc("notificar_novo_pedido", {
-          _pedido_id: data.id,
-        });
+        const { error: notifError } = await supabase.rpc("notificar_novo_pedido", { _pedido_id: data.id });
         if (notifError) console.error(notifError);
       } catch (e) {
         console.error(e);
       }
     },
     onSuccess: () => {
-      toast.success("Pedido de transporte enviado");
-      setTitulo("");
-      setHora("");
+      toast.success("Pedido de viagem enviado");
       setOrigem("");
       setDestino("");
-      setNumPassageiros(1);
-      setTipoViatura("");
-      setObservacoes("");
       qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -122,43 +141,13 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const editarPedido = useMutation({
-    mutationFn: async ({ id, campos }: { id: string; campos: Record<string, unknown> }) => {
-      const { error } = await supabase.from("pedidos_transporte").update(campos as Database["public"]["Tables"]["pedidos_transporte"]["Update"]).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido actualizado");
-      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const editar = (p: any) => {
-    const tituloNovo = window.prompt("Título", p.titulo ?? "");
-    if (tituloNovo === null) return;
-    const origemNova = window.prompt("Origem", p.origem);
-    if (origemNova === null) return;
-    const destinoNovo = window.prompt("Destino", p.destino);
-    if (destinoNovo === null) return;
-    const dataNova = window.prompt("Data da viagem (AAAA-MM-DD)", p.data_viagem);
-    if (dataNova === null) return;
-    const horaNova = window.prompt("Hora (HH:MM, opcional)", p.hora?.slice(0, 5) ?? "");
-    if (horaNova === null) return;
-    const numNovo = window.prompt("Número de passageiros", String(p.num_passageiros));
-    if (numNovo === null) return;
-    editarPedido.mutate({
-      id: p.id,
-      campos: {
-        titulo: tituloNovo.trim(),
-        origem: origemNova.trim(),
-        destino: destinoNovo.trim(),
-        data_viagem: dataNova,
-        hora: horaNova.trim() || null,
-        num_passageiros: Math.max(1, Number(numNovo) || 1),
-      },
-    });
-  };
+  const podeEnviar =
+    dataViagem >= hoje &&
+    !!origem &&
+    !!destino &&
+    origem !== destino &&
+    !criarPedido.isPending &&
+    !pedidos?.some((p) => ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"].includes(p.estado));
 
   const podeEnviar =
     dataViagem >= hoje &&
@@ -171,52 +160,36 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
       <Card>
         <CardHeader>
-          <CardTitle>Solicitar transporte</CardTitle>
+          <CardTitle>Solicitar viagem</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Envie um pedido de transporte. O operador fará a análise e, quando aplicável, associará a uma rota.
+            Passageiro: <strong>{passageiro.nome}</strong> · ID: <strong>{passageiro.id.slice(0, 8).toUpperCase()}</strong>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Só pode existir uma solicitação activa por passageiro.
           </p>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Título (opcional)</Label>
-            <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Transporte para o evento" />
-          </div>
+        <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label>Data da viagem</Label>
             <Input type="date" min={hoje} value={dataViagem} onChange={(e) => setDataViagem(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Hora (opcional)</Label>
-            <Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Origem</Label>
-            <Input value={origem} onChange={(e) => setOrigem(e.target.value)} placeholder="Local de partida" />
+            <Label>Ponto de origem</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={origem} onChange={(e) => setOrigem(e.target.value)}>
+              <option value="">Escolha o ponto</option>
+              {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
+            </select>
           </div>
           <div className="space-y-2">
             <Label>Destino</Label>
-            <Input value={destino} onChange={(e) => setDestino(e.target.value)} placeholder="Local de chegada" />
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={destino} onChange={(e) => setDestino(e.target.value)}>
+              <option value="">Escolha o destino</option>
+              {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
+            </select>
           </div>
-          <div className="space-y-2">
-            <Label>Número de passageiros</Label>
-            <Input
-              type="number"
-              min={1}
-              value={numPassageiros}
-              onChange={(e) => setNumPassageiros(Math.max(1, Number(e.target.value) || 1))}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Tipo de viatura (opcional)</Label>
-            <Input value={tipoViatura} onChange={(e) => setTipoViatura(e.target.value)} placeholder="Ex.: Minibus" />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Observações</Label>
-            <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais para o operador" />
-          </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <Button disabled={!podeEnviar} onClick={() => criarPedido.mutate()}>
-              {criarPedido.isPending ? "A enviar..." : "Enviar pedido"}
+              {criarPedido.isPending ? "A enviar..." : "Solicitar viagem"}
             </Button>
           </div>
         </CardContent>
@@ -244,13 +217,10 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                 <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
                 <p className="text-xs text-muted-foreground">{pedido.num_passageiros} passageiro(s){pedido.tipo_viatura ? ` · ${pedido.tipo_viatura}` : ""}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {["rascunho", "submetido"].includes(pedido.estado) && (
-                    <Button size="sm" variant="outline" disabled={editarPedido.isPending} onClick={() => editar(pedido)}>Editar</Button>
-                  )}
                   {["rascunho", "submetido", "em_analise", "aprovado"].includes(pedido.estado) && (
                     <Button size="sm" variant="outline" disabled={cancelarPedido.isPending} onClick={() => {
-                      if (window.confirm("Cancelar este pedido?")) cancelarPedido.mutate(pedido.id);
-                    }}>Cancelar</Button>
+                      if (window.confirm("Cancelar este pedido de viagem?")) cancelarPedido.mutate(pedido.id);
+                    }}>Cancelar pedido</Button>
                   )}
                   {["rascunho", "submetido", "cancelado", "rejeitado"].includes(pedido.estado) && (
                     <Button size="sm" variant="destructive" disabled={eliminarPedido.isPending} onClick={() => {
