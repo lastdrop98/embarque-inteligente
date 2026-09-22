@@ -45,6 +45,7 @@ function MotoristaPage() {
   const [tipo, setTipo] = useState<"embarque" | "desembarque">("embarque");
   const [resultado, setResultado] = useState<ResultadoScan | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [acao, setAcao] = useState<string | null>(null);
   const [emServico, setEmServico] = useState(false);
   const [incidenteAberto, setIncidenteAberto] = useState<string | null>(null);
   const [descIncidente, setDescIncidente] = useState("");
@@ -267,11 +268,20 @@ function MotoristaPage() {
 
   async function submeter(valor?: string) {
     const t = (valor ?? token).trim();
-    if (!t || !rota) return;
-    const r = await validar({ data: { token: t, rotaId: rota.id, paragemId, tipo } });
-    setResultado(r);
-    setToken("");
-    qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
+    if (!t || !rota || acao) return;
+    setAcao("validar");
+    try {
+      const r = await validar({ data: { token: t, rotaId: rota.id, paragemId, tipo } });
+      setResultado(r);
+      setToken("");
+      await qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
+      if (r.aprovado) toast.success("Embarque validado.");
+      else toast.error(r.motivo ?? "Leitura recusada.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível validar o código.");
+    } finally {
+      setAcao(null);
+    }
   }
 
   const { data: meusIncidentes } = useQuery({
@@ -410,7 +420,7 @@ function MotoristaPage() {
                   <Label>Ou introduza o código manualmente</Label>
                   <Input className="h-12" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token do bilhete" />
                 </div>
-                <Button variant="secondary" className="h-12" disabled={!token} onClick={() => submeter()}>Validar</Button>
+                <Button variant="secondary" className="h-12" aria-busy={acao === "validar"} disabled={!token || !!acao} onClick={() => void submeter()}>Validar</Button>
               </div>
 
               {resultado && (
@@ -454,7 +464,7 @@ function MotoristaPage() {
                     value={descIncidente}
                     onChange={(e) => setDescIncidente(e.target.value)}
                   />
-                  <Button disabled={reportarIncidente.isPending} onClick={() => reportarIncidente.mutate()}>
+                  <Button aria-busy={reportarIncidente.isPending} disabled={reportarIncidente.isPending} onClick={() => reportarIncidente.mutate()}>
                     Enviar reporte de "{incidenteAberto}"
                   </Button>
                 </div>
