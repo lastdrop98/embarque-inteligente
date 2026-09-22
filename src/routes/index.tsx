@@ -53,8 +53,7 @@ function Index() {
           </Link>
           <Link
             to="/auth"
-            className="!important inline-flex h-11 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#00C853] px-6 text-sm font-extrabold !text-white shadow-2xl transition hover:bg-[#00A844] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            style={{ color: "#ffffff", backgroundColor: "#00C853" }}
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-white/40 bg-blue-600/55 px-6 text-sm font-extrabold text-white shadow-2xl backdrop-blur-xl transition hover:bg-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             aria-label="Entrar na plataforma"
           >
             <span style={{ color: "#ffffff" }}>Entrar</span>
