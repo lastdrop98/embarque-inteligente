@@ -255,6 +255,19 @@ function useRotas() {
 function Rotas() {
   const { data: rotas } = useRotas();
   const { data: veiculos } = useVeiculos();
+
+  const eliminarTodasRotas = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("eliminar_todas_rotas_segura");
+      if (error) throw error;
+      return data ?? 0;
+    },
+    onSuccess: (total) => {
+      toast.success(total > 0 ? `${total} rota(s) eliminada(s)` : "Não havia rotas para eliminar");
+      invalidate("rotas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const invalidate = useInvalidate();
   const { data: motoristas } = useQuery({
     queryKey: ["motoristas"],
@@ -321,8 +334,34 @@ function Rotas() {
         </CardContent>
       </Card>
 
+      {rotas?.length ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <div>
+            <p className="text-sm font-semibold">Limpar todas as rotas</p>
+            <p className="text-xs text-muted-foreground">
+              Elimina todas as rotas criadas e os respetivos dados associados. Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            disabled={eliminarTodasRotas.isPending}
+            onClick={() => {
+              const total = rotas.length;
+              if (window.confirm(
+                `Eliminar TODAS as ${total} rota(s)? Serão também eliminados os bilhetes, embarques e paragens associados. Esta ação não pode ser desfeita.`
+              )) {
+                eliminarTodasRotas.mutate();
+              }
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            {eliminarTodasRotas.isPending ? "A eliminar..." : "Eliminar todas as rotas"}
+          </Button>
+        </div>
+      ) : null}
+
       {rotas?.map((r) => <RotaCard key={r.id} rota={r} />)}
-      {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não há rotas.</p>}
+      {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não há rotas.</p>
     </div>
   );
 }
