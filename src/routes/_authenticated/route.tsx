@@ -475,7 +475,7 @@ function Layout() {
             to="/"
             className="font-semibold tracking-tight"
           >
-            Rotas &amp; Embarque QR
+            PickApp Mobility
           </Link>
 
           <nav className="hidden flex-1 flex-wrap gap-1 text-sm md:flex">
