@@ -158,14 +158,32 @@ function Layout() {
     typeof window !== "undefined" ? window.location.pathname : "/";
 
   const papelAtual: Papel | null = (() => {
-    if (data?.papeis?.length === 1) return data.papeis[0] ?? null;
-    if (data?.papeis && data.papeis.length > 1) {
-      const armazenado = lerSessao("papel_sessao");
-      return papelValido(armazenado) && data.papeis.includes(armazenado)
-        ? armazenado
-        : null;
+    if (!data?.papeis?.length) return null;
+
+    // A rota explícita tem prioridade quando o utilizador possui esse papel.
+    // Assim, abrir /admin no preview não herda um papel antigo do browser.
+    const papelDiretoPorRota: Array<[Rota, Papel]> = [
+      ["/admin", "admin"],
+      ["/operador", "operador"],
+      ["/motorista", "motorista"],
+      ["/passageiro", "passageiro"],
+      ["/grupo", "responsavel_grupo"],
+    ];
+    const rotaDireta = papelDiretoPorRota.find(([rota]) =>
+      pathname === rota || pathname.startsWith(rota + "/")
+    );
+    const papelDaRota = rotaDireta?.[1];
+
+    if (papelDaRota && data.papeis.includes(papelDaRota)) {
+      return papelDaRota;
     }
-    return null;
+
+    if (data.papeis.length === 1) return data.papeis[0] ?? null;
+
+    const armazenado = lerSessao("papel_sessao");
+    return papelValido(armazenado) && data.papeis.includes(armazenado)
+      ? armazenado
+      : null;
   })();
 
   useEffect(() => {
