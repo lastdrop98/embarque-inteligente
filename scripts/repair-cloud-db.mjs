@@ -115,6 +115,51 @@ REVOKE ALL ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uui
 FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uuid, uuid, time, time, integer)
 TO authenticated;
+
+-- Códigos QR/scan compactos de 8 caracteres. Só migra tokens antigos uma vez.
+CREATE OR REPLACE FUNCTION public.gerar_token_qr_curto()
+RETURNS text
+LANGUAGE plpgsql
+VOLATILE
+SET search_path = public
+AS $function$
+DECLARE _token text;
+BEGIN
+  LOOP
+    _token := translate(encode(gen_random_bytes(6), 'base64'), '+/', '-_');
+    IF length(_token) = 8
+       AND NOT EXISTS (SELECT 1 FROM public.viagens_passageiro WHERE token_qr = _token) THEN
+      RETURN _token;
+    END IF;
+  END LOOP;
+END;
+$function$;
+ALTER TABLE public.viagens_passageiro
+  ALTER COLUMN token_qr SET DEFAULT public.gerar_token_qr_curto();
+UPDATE public.viagens_passageiro
+SET token_qr = public.gerar_token_qr_curto()
+WHERE length(token_qr) <> 8;
+
+-- Preferências de histórico pessoal: esconder sem apagar os dados operacionais.
+CREATE TABLE IF NOT EXISTS public.historico_ocultos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  entidade_tipo text NOT NULL,
+  entidade_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT historico_ocultos_unq UNIQUE (user_id, entidade_tipo, entidade_id)
+);
+ALTER TABLE public.historico_ocultos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS historico_ocultos_select_proprio ON public.historico_ocultos;
+CREATE POLICY historico_ocultos_select_proprio ON public.historico_ocultos
+FOR SELECT TO authenticated USING (user_id = auth.uid());
+DROP POLICY IF EXISTS historico_ocultos_insert_proprio ON public.historico_ocultos;
+CREATE POLICY historico_ocultos_insert_proprio ON public.historico_ocultos
+FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+DROP POLICY IF EXISTS historico_ocultos_delete_proprio ON public.historico_ocultos;
+CREATE POLICY historico_ocultos_delete_proprio ON public.historico_ocultos
+FOR DELETE TO authenticated USING (user_id = auth.uid());
+
 NOTIFY pgrst, 'reload schema';`;
 const candidates = [
   process.env.LOVABLE_DB_MIGRATION_URL,
