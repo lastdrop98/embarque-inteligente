@@ -199,6 +199,8 @@ export const Route = createFileRoute(
   "/_authenticated"
 )({
   ssr: false,
+  pendingMs: 0,
+  pendingComponent: AuthenticatedPending,
 
   beforeLoad: async ({ location }) => {
     const {
@@ -348,6 +350,18 @@ export const Route = createFileRoute(
 
   component: Layout,
 });
+
+function AuthenticatedPending() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="text-center">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+        <p className="mt-4 text-sm font-medium text-foreground">A carregar a área...</p>
+        <p className="mt-1 text-xs text-muted-foreground">A verificar a sessão e preparar o painel.</p>
+      </div>
+    </div>
+  );
+}
 
 function Layout() {
   const {
