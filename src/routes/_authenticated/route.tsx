@@ -96,6 +96,30 @@ const LINKS_POR_PAPEL: Record<
   ],
 };
 
+function lerSessao(chave: string): string | null {
+  try {
+    return typeof window !== "undefined" ? window.sessionStorage.getItem(chave) : null;
+  } catch {
+    return null;
+  }
+}
+
+function gravarSessao(chave: string, valor: string): void {
+  try {
+    if (typeof window !== "undefined") window.sessionStorage.setItem(chave, valor);
+  } catch {
+    // Alguns browsers podem bloquear storage; a navegação continua funcional.
+  }
+}
+
+function removerSessao(chave: string): void {
+  try {
+    if (typeof window !== "undefined") window.sessionStorage.removeItem(chave);
+  } catch {
+    // Ignorar falhas de storage.
+  }
+}
+
 function papelValido(
   papel: string | null
 ): papel is Papel {
@@ -203,149 +227,77 @@ export const Route = createFileRoute(
   pendingComponent: AuthenticatedPending,
 
   beforeLoad: async ({ location }) => {
-    const {
-      data,
-      error,
-    } = await supabase.auth.getUser();
+    try {
+      // Este route é ssr:false: o guard corre no browser. Use a sessão persistida
+      // primeiro para evitar falhas de rede/storage a transformarem-se em 500.
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
 
-    if (error || !data.user) {
-      throw redirect({
-        to: "/auth",
-      });
-    }
-
-    const {
-      data: papeis,
-      error: papelError,
-    } = await supabase
-      .from("papeis_utilizador")
-      .select("role")
-      .eq("user_id", data.user.id);
-
-    if (papelError) {
-      console.error(
-        "[route] erro ao obter papéis:",
-        papelError
-      );
-
-      throw redirect({
-        to: "/auth",
-      });
-    }
-
-    const roles: Papel[] = [
-      ...new Set(
-        (papeis ?? [])
-          .map((p) => p.role as string)
-          .filter((role): role is Papel =>
-            papelValido(role)
-          )
-      ),
-    ];
-
-    /*
-     * Conta sem qualquer papel:
-     * não permitimos acesso.
-     */
-    if (roles.length === 0) {
-      console.error(
-        "[route] utilizador sem papel:",
-        data.user.id
-      );
-
-      sessionStorage.removeItem(
-        "papel_sessao"
-      );
-
-      throw redirect({
-        to: "/auth",
-      });
-    }
-
-    let papelSessao: Papel | null = null;
-
-    /*
-     * Apenas um papel:
-     * entra directamente nesse papel.
-     */
-    if (roles.length === 1) {
-      const unico = roles[0];
-
-      if (unico) {
-        papelSessao = unico;
-
-        sessionStorage.setItem(
-          "papel_sessao",
-          unico
-        );
+      if (sessionError || !sessionData.session?.user) {
+        throw redirect({ to: "/auth" });
       }
-    }
 
-    /*
-     * Mais de um papel:
-     * NÃO escolhemos automaticamente.
-     *
-     * O utilizador precisa escolher
-     * explicitamente o papel da sessão.
-     */
-    else {
-      const armazenado =
-        sessionStorage.getItem(
-          "papel_sessao"
-        );
+      const user = sessionData.session.user;
 
-      if (
-        papelValido(armazenado) &&
-        roles.includes(armazenado)
-      ) {
-        papelSessao = armazenado;
+      const { data: papeis, error: papelError } = await supabase
+        .from("papeis_utilizador")
+        .select("role")
+        .eq("user_id", user.id);
+
+      if (papelError) {
+        console.error("[route] erro ao obter papéis:", papelError);
+        throw redirect({ to: "/auth" });
       }
+
+      const roles: Papel[] = [
+        ...new Set(
+          (papeis ?? [])
+            .map((p) => p.role as string)
+            .filter((role): role is Papel => papelValido(role))
+        ),
+      ];
+
+      if (roles.length === 0) {
+        console.error("[route] utilizador sem papel:", user.id);
+        removerSessao("papel_sessao");
+        throw redirect({ to: "/auth" });
+      }
+
+      let papelSessao: Papel | null = null;
+
+      if (roles.length === 1) {
+        const unico = roles[0];
+        if (unico) {
+          papelSessao = unico;
+          gravarSessao("papel_sessao", unico);
+        }
+      } else {
+        const armazenado = lerSessao("papel_sessao");
+        if (papelValido(armazenado) && roles.includes(armazenado)) {
+          papelSessao = armazenado;
+        }
+      }
+
+      if (!papelSessao) {
+        gravarSessao("papeis_disponiveis", JSON.stringify(roles));
+        throw redirect({ to: "/selecionar-papel" });
+      }
+
+      const pathname = location.pathname;
+
+      if (rotaPermitidaParaPapel(papelSessao, pathname)) {
+        return { user, roles, papel: papelSessao };
+      }
+
+      redirecionarParaPapel(papelSessao);
+    } catch (error) {
+      // Redirects são controlo de fluxo e devem continuar a ser lançados.
+      if (error && typeof error === "object" && "isRedirect" in error) {
+        throw error;
+      }
+      console.error("[route] falha inesperada no guard:", error);
+      throw redirect({ to: "/auth" });
     }
-
-    /*
-     * Ainda não escolheu o papel.
-     */
-    if (!papelSessao) {
-      sessionStorage.setItem(
-        "papeis_disponiveis",
-        JSON.stringify(roles)
-      );
-
-      throw redirect({
-        to: "/selecionar-papel",
-      });
-    }
-
-    const pathname =
-      location.pathname;
-
-    /*
-     * Verifica se o papel seleccionado
-     * pode entrar nesta rota.
-     *
-     * Admin tem acesso global.
-     */
-    if (
-      rotaPermitidaParaPapel(
-        papelSessao,
-        pathname
-      )
-    ) {
-      return {
-        user: data.user,
-        roles,
-        papel: papelSessao,
-      };
-    }
-
-    /*
-     * Se tentou entrar numa área
-     * que não pertence ao papel activo,
-     * volta para o painel desse papel.
-     */
-    redirecionarParaPapel(
-      papelSessao
-    );
   },
 
   component: Layout,
@@ -394,9 +346,7 @@ function Layout() {
     data.papeis.length > 1
   ) {
     const armazenado =
-      sessionStorage.getItem(
-        "papel_sessao"
-      );
+      lerSessao("papel_sessao");
 
     if (
       papelValido(armazenado) &&
@@ -435,14 +385,9 @@ function Layout() {
      * Remove o papel actual para obrigar
      * a uma nova escolha explícita.
      */
-    sessionStorage.removeItem(
-      "papel_sessao"
-    );
+    removerSessao("papel_sessao");
 
-    sessionStorage.setItem(
-      "papeis_disponiveis",
-      JSON.stringify(data.papeis)
-    );
+    gravarSessao("papeis_disponiveis", JSON.stringify(data.papeis));
 
     fecharMenuMobile();
     navigate({
@@ -456,9 +401,7 @@ function Layout() {
       "papel_sessao"
     );
 
-    sessionStorage.removeItem(
-      "papeis_disponiveis"
-    );
+    removerSessao("papeis_disponiveis");
 
     await queryClient.cancelQueries();
 
@@ -608,7 +551,8 @@ function Layout() {
         />
 
 
-        <div className="relative z-10">\n        {suspenso ? (
+        <div className="relative z-10">
+        {suspenso ? (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
 
             <h1 className="text-lg font-semibold text-destructive">
