@@ -481,12 +481,12 @@ function Layout() {
   return (
     <div className="min-h-screen bg-secondary">
 
-      <header className="sticky top-0 z-40 border-b border-sidebar-border/70 bg-sidebar/95 text-sidebar-foreground shadow-lg backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 text-white shadow-lg backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-h-11 items-center gap-2 sm:gap-3">
             <Link
               to="/"
-              className="flex min-w-0 flex-1 items-center gap-2.5 truncate text-sm font-semibold tracking-tight sm:text-base"
+              className="flex min-w-0 flex-1 items-center gap-2.5 truncate text-sm font-semibold tracking-tight text-white sm:text-base"
               onClick={fecharMenuMobile}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10">
@@ -595,9 +595,20 @@ function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
+      <main className="relative mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 -z-0 overflow-hidden opacity-[0.055]"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1800&q=75')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
 
-        {suspenso ? (
+
+        <div className="relative z-10">\n        {suspenso ? (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
 
             <h1 className="text-lg font-semibold text-destructive">
