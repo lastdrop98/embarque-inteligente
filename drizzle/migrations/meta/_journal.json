@@ -22,6 +22,20 @@
       "when": 1790061386785,
       "tag": "0002_notificar_novo_pedido_e_delete_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790070000000,
+      "tag": "0003_adicionar_cancelado_estado_pedido",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790071000000,
+      "tag": "0004_corrigir_pontos_cancelamento_e_limpar_pedidos",
+      "breakpoints": true
     }
   ]
 }
