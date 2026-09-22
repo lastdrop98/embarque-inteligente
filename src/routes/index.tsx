@@ -16,6 +16,16 @@ import {
   Zap,
 } from "lucide-react";
 
+export const Route = createFileRoute("/")({
+  component: Index,
+  head: () => ({
+    meta: [
+      { title: "PickApp Mobility — Embarque Inteligente" },
+      { name: "description", content: "Gestão inteligente de mobilidade, rotas e embarques por QR Code." },
+    ],
+  }),
+});
+
 function Index() {
   return (
     <main className="min-h-screen bg-background">
