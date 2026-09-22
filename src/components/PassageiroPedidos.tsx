@@ -141,6 +141,19 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const eliminarTodosPedidos = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("eliminar_meus_pedidos");
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    onSuccess: (total) => {
+      toast.success(total > 0 ? `${total} pedido(s) eliminado(s)` : "Não havia pedidos elimináveis");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const podeEnviar =
     dataViagem >= hoje &&
     !!origem &&
@@ -192,6 +205,21 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         <CardHeader>
           <CardTitle>Os meus pedidos</CardTitle>
           <p className="text-sm text-muted-foreground">Acompanhe aqui o estado de cada solicitação.</p>
+          {pedidos?.some((p) => ["rascunho", "submetido", "cancelado", "rejeitado"].includes(p.estado)) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              disabled={eliminarTodosPedidos.isPending}
+              onClick={() => {
+                if (window.confirm("Eliminar todos os pedidos que podem ser eliminados? Esta acção não pode ser desfeita.")) {
+                  eliminarTodosPedidos.mutate();
+                }
+              }}
+            >
+              {eliminarTodosPedidos.isPending ? "A eliminar..." : "Eliminar pedidos antigos"}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           {pedidos?.length ? pedidos.map((pedido) => {
