@@ -643,6 +643,8 @@ export type Database = {
     }
     Functions: {
       cancelar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
+      eliminar_rota_segura: { Args: { _rota_id: string }; Returns: undefined }
+      eliminar_todas_rotas_segura: { Args: never; Returns: number }
       criar_rota_operacional: { Args: { _nome?: string | null; _veiculo_id?: string | null; _motorista_id?: string | null; _ponto_partida_id?: string | null; _ponto_chegada_id?: string | null; _paragem_id?: string | null; _hora_inicio?: string | null; _hora_fim?: string | null; _passageiros_previstos?: number | null }; Returns: string }
       eliminar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
       limpar_dados_apresentacao: { Args: never; Returns: Json }
