@@ -129,9 +129,104 @@
     border-color: var(--color-border);
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif;
+    font-feature-settings: "cv11" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: oklch(0.34 0.09 258 / 0.18);
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@keyframes premium-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes premium-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+}
+
+@keyframes premium-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-premium-in {
+  animation: premium-fade-up 0.5s cubic-bezier(.22,1,.36,1) both;
+}
+
+.premium-surface {
+  background:
+    radial-gradient(circle at 10% 0%, oklch(0.55 0.13 250 / 0.08), transparent 30%),
+    radial-gradient(circle at 90% 20%, oklch(0.55 0.13 190 / 0.07), transparent 28%),
+    var(--color-background);
+}
+
+.premium-grid {
+  background-image:
+    linear-gradient(to right, oklch(0.3 0.03 258 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(0.3 0.03 258 / 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.glass-panel {
+  border: 1px solid oklch(1 0 0 / 0.6);
+  background: oklch(1 0 0 / 0.72);
+  box-shadow: 0 20px 70px -35px oklch(0.2 0.04 258 / 0.38);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.premium-glow {
+  animation: premium-pulse 5s ease-in-out infinite;
+  filter: blur(1px);
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.94 0.01 250) 25%,
+    oklch(0.985 0.004 250) 50%,
+    oklch(0.94 0.01 250) 75%
+  );
+  background-size: 200% 100%;
+  animation: premium-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-premium-in,
+  .premium-glow,
+  .skeleton-shimmer {
+    animation: none !important;
   }
 }
 
