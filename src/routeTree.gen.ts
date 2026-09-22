@@ -127,6 +127,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/grupo'
     | '/selecionar-papel'
     | '/admin'
     | '/motorista'
@@ -139,6 +140,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/grupo'
     | '/selecionar-papel'
     | '/admin'
     | '/motorista'
@@ -152,7 +154,10 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/grupo'
     | '/selecionar-papel'
+    | '/admin'
+    | '/grupo'
     | '/_authenticated/admin'
     | '/_authenticated/motorista'
     | '/_authenticated/operador'
