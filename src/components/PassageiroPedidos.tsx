@@ -38,8 +38,8 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     queryKey: ["pontos-embarque-predefinidos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("paragens")
-        .select("id, nome")
+        .from("pontos_predefinidos")
+        .select("id, nome").eq("activo", true)
         .order("nome");
       if (error) throw error;
       const vistos = new Set<string>();
