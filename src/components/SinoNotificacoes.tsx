@@ -59,7 +59,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
 
   useEffect(() => {
     const canal = supabase
-      .channel("notificacoes-" + userId)
+      .channel(`notificacoes-${userId}-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
