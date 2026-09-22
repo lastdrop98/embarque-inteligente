@@ -15,8 +15,9 @@ export type BilheteInfo = {
 /** Página pública do passageiro: o token funciona como segredo. */
 export const obterBilhete = createServerFn({ method: "GET" })
   .inputValidator((data: { token: string }) => {
-    if (!data?.token || data.token.length < 20) throw new Error("Token inválido");
-    return { token: data.token };
+    const token = data?.token?.trim();
+    if (!token || !/^[A-Za-z0-9_-]{8,128}$/.test(token)) throw new Error("Token inválido");
+    return { token };
   })
   .handler(async ({ data }): Promise<BilheteInfo | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
