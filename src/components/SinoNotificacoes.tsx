@@ -162,8 +162,8 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
   return (
     <DropdownMenu open={aberto} onOpenChange={(v) => { setAberto(v); if (v) void marcarComoLidas(); }}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative min-h-11 min-w-11 text-sidebar-foreground hover:bg-sidebar-accent" aria-label="Notificações">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="relative min-h-11 min-w-11 !bg-white/10 !text-white hover:!bg-white/20 hover:!text-white focus-visible:!text-white" aria-label="Notificações">
+          <Bell className="h-5 w-5 !text-white stroke-[2.25]" />
           {naoLidas > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{naoLidas}</span>}
         </Button>
       </DropdownMenuTrigger>
