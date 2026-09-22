@@ -235,6 +235,23 @@ function MotoristaPage() {
     qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
   }
 
+  const { data: meusIncidentes } = useQuery({
+    queryKey: ["meus-incidentes-motorista", rota?.id],
+    enabled: !!rota?.id,
+    queryFn: async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || !rota?.id) return [];
+      const { data, error } = await supabase
+        .from("incidentes")
+        .select("id, tipo, descricao, estado, created_at")
+        .eq("motorista_id", authData.user.id)
+        .eq("rota_id", rota.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   // ---- Incidentes ----
   const reportarIncidente = useMutation({
     mutationFn: async () => {
@@ -387,6 +404,22 @@ function MotoristaPage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Histórico do motorista</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {meusIncidentes?.length ? meusIncidentes.map((i) => (
+                <div key={i.id} className="rounded-md border px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={i.estado === "aberto" ? "destructive" : "secondary"}>{i.estado}</Badge>
+                    <span className="font-medium">{i.tipo}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{new Date(i.created_at).toLocaleString("pt-PT")}</span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{i.descricao}</p>
+                </div>
+              )) : <p className="text-sm text-muted-foreground">Sem incidentes registados nesta rota.</p>}
             </CardContent>
           </Card>
 
