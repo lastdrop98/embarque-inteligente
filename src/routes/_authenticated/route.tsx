@@ -2,6 +2,7 @@ import {
   createFileRoute,
   Outlet,
   redirect,
+  isRedirect,
   Link,
   useNavigate,
 } from "@tanstack/react-router";
@@ -292,7 +293,7 @@ export const Route = createFileRoute(
       redirecionarParaPapel(papelSessao);
     } catch (error) {
       // Redirects são controlo de fluxo e devem continuar a ser lançados.
-      if (error && typeof error === "object" && "isRedirect" in error) {
+      if (isRedirect(error)) {
         throw error;
       }
       console.error("[route] falha inesperada no guard:", error);
