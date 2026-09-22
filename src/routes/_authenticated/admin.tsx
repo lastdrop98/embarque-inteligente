@@ -1029,10 +1029,6 @@ function PontosPredefinidos() {
     },
   });
 
-  const [nome, setNome] = useMemo(() => {
-    return ["" as string, (v: string) => void v] as const;
-  }, []);
-
   const criar = useMutation({
     mutationFn: async (valor: string) => {
       const limpo = valor.trim();
