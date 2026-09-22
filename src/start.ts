@@ -2,9 +2,11 @@ import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/r
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
+import { ensureCloudDatabaseRepair } from "./lib/cloud-db-repair.server";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
+    await ensureCloudDatabaseRepair();
     return await next();
   } catch (error) {
     if (error != null && typeof error === "object" && "statusCode" in error) {
