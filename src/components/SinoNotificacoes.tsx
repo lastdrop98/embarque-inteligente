@@ -19,6 +19,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
   const [aberto, setAberto] = useState(false);
   const [somAtivo, setSomAtivo] = useState(() => localStorage.getItem("som_notificacoes") === "1");
   const touchStartX = useRef<number | null>(null);
+  const somAtivoRef = useRef(somAtivo);
 
   const { data } = useQuery({
     queryKey: ["notificacoes", userId],
@@ -35,7 +36,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
   });
 
   function tocarSom() {
-    if (!somAtivo) return;
+    if (!somAtivoRef.current) return;
     try {
       const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
@@ -91,7 +92,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
       )
       .subscribe();
     return () => { supabase.removeChannel(canal); };
-  }, [userId, qc, somAtivo]);
+  }, [userId, qc]);
 
   const notificacoes = data ?? [];
   const naoLidas = notificacoes.filter((n) => !n.lida).length;
@@ -113,6 +114,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
       }
     } catch {}
     localStorage.setItem("som_notificacoes", "1");
+    somAtivoRef.current = true;
     setSomAtivo(true);
     if ("Notification" in window && Notification.permission === "default") {
       try { await Notification.requestPermission(); } catch {}
@@ -122,6 +124,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
 
   function desativarSom() {
     localStorage.removeItem("som_notificacoes");
+    somAtivoRef.current = false;
     setSomAtivo(false);
   }
 
