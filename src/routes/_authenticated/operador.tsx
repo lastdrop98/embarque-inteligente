@@ -464,6 +464,41 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const invalidate = useInvalidate();
   const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const { data: reconciliacao } = useReconciliacao(rota.id);
+  const [aEditar, setAEditar] = useState(false);
+  const [nomeEdicao, setNomeEdicao] = useState(rota.nome);
+  const [inicioEdicao, setInicioEdicao] = useState(rota.hora_inicio?.slice(0, 5) ?? "");
+  const [fimEdicao, setFimEdicao] = useState(rota.hora_fim?.slice(0, 5) ?? "");
+  const [previstosEdicao, setPrevistosEdicao] = useState(String(rota.passageiros_previstos ?? ""));
+
+  const editarRota = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("rotas").update({
+        nome: nomeEdicao.trim(),
+        hora_inicio: inicioEdicao || null,
+        hora_fim: fimEdicao || null,
+        passageiros_previstos: previstosEdicao ? Number(previstosEdicao) : null,
+      }).eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rota actualizada");
+      setAEditar(false);
+      invalidate("rotas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminarRota = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("eliminar_rota_segura", { _rota_id: rota.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rota eliminada");
+      invalidate("rotas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
