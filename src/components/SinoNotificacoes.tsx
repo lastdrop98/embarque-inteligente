@@ -69,7 +69,7 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
           qc.setQueryData<Notificacao[]>(["notificacoes", userId], (actual = []) => [nova, ...actual].slice(0, 20));
           tocarSom();
           if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
-            new Notification("Embarque Inteligente", { body: nova.mensagem });
+            new Notification("PickApp Mobility", { body: nova.mensagem });
           }
         },
       )
