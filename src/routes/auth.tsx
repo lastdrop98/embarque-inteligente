@@ -28,13 +28,14 @@ type Papel =
   | "admin"
   | "operador"
   | "motorista"
-  | "passageiro";
+  | "passageiro" | "responsavel_grupo";
 
 const PAPEIS_VALIDOS: Papel[] = [
   "admin",
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTAS_POR_PAPEL: Record<Papel, string> = {
@@ -42,6 +43,8 @@ const ROTAS_POR_PAPEL: Record<Papel, string> = {
   operador: "/operador",
   motorista: "/motorista",
   passageiro: "/passageiro",
+  responsavel_grupo: "/grupo",
+  responsavel_grupo: "/grupo",
 };
 
 export const Route = createFileRoute("/auth")({
