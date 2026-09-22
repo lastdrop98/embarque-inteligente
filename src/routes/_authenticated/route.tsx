@@ -187,6 +187,11 @@ function redirecionarParaPapel(
       throw redirect({
         to: "/passageiro",
       });
+
+    case "/grupo":
+      throw redirect({
+        to: "/grupo",
+      });
   }
 }
 
