@@ -8,7 +8,7 @@ import {
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Navigation, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -467,15 +467,18 @@ function Layout() {
   return (
     <div className="min-h-screen bg-secondary">
 
-      <header className="relative bg-sidebar text-sidebar-foreground">
+      <header className="sticky top-0 z-40 border-b border-sidebar-border/70 bg-sidebar/95 text-sidebar-foreground shadow-lg backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-h-11 items-center gap-2 sm:gap-3">
             <Link
               to="/"
-              className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight sm:text-base"
+              className="flex min-w-0 flex-1 items-center gap-2.5 truncate text-sm font-semibold tracking-tight sm:text-base"
               onClick={fecharMenuMobile}
             >
-              PickApp Mobility
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                <Navigation className="h-4 w-4" />
+              </span>
+              <span className="truncate">PickApp Mobility</span>
             </Link>
 
             <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 text-sm md:flex">
