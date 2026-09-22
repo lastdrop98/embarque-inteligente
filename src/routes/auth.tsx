@@ -246,9 +246,9 @@ function AuthPage() {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <div className="grid min-h-screen lg:grid-cols-[1.08fr_0.92fr]">
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
         <section
-          className="relative hidden overflow-hidden lg:flex"
+          className="relative flex min-h-[220px] overflow-hidden lg:min-h-screen"
           style={{
             backgroundImage:
               "linear-gradient(135deg, rgba(5,18,42,.88), rgba(7,64,83,.58)), url('https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1800&q=85')",
@@ -260,7 +260,7 @@ function AuthPage() {
           <div className="absolute -left-20 top-20 h-64 w-64 animate-[premium-pulse_5s_ease-in-out_infinite] rounded-full bg-emerald-300/15 blur-3xl" />
           <div className="absolute -right-24 bottom-16 h-80 w-80 animate-[premium-pulse_6s_ease-in-out_infinite] rounded-full bg-cyan-300/15 blur-3xl" />
 
-          <div className="relative z-10 flex w-full flex-col justify-between p-10 xl:p-14">
+          <div className="relative z-10 flex w-full flex-col justify-between p-6 sm:p-8 lg:p-10 xl:p-14">
             <Link to="/" className="inline-flex w-fit items-center gap-3 text-white">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
                 <MapPin className="h-5 w-5 text-white" />
@@ -268,19 +268,19 @@ function AuthPage() {
               <span className="text-lg font-semibold tracking-tight">PickApp Mobility</span>
             </Link>
 
-            <div className="max-w-xl">
+            <div className="max-w-xl py-4 lg:py-0">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
                 <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
                 Embarque Inteligente
               </div>
-              <h1 className="text-5xl font-bold leading-[1.04] tracking-[-0.04em] text-white xl:text-6xl">
+              <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-white sm:text-4xl xl:text-6xl">
                 A mobilidade da sua equipa, num só lugar.
               </h1>
-              <p className="mt-6 max-w-lg text-base leading-7 text-white/80">
+              <p className="mt-4 max-w-lg text-sm leading-6 text-white/80 sm:text-base sm:leading-7">
                 Rotas, passageiros, motoristas e validação por QR Code com uma experiência operacional simples.
               </p>
 
-              <div className="mt-8 grid max-w-lg gap-3 sm:grid-cols-3">
+              <div className="mt-5 hidden max-w-lg gap-3 sm:grid sm:grid-cols-3 lg:grid">
                 {[
                   { icon: RouteIcon, label: "Rotas" },
                   { icon: ShieldCheck, label: "Segurança" },
@@ -294,23 +294,23 @@ function AuthPage() {
               </div>
             </div>
 
-            <p className="text-xs text-white/60">PickApp Mobility · Embarque Inteligente</p>
+            <p className="hidden text-xs text-white/60 lg:block">PickApp Mobility · Embarque Inteligente</p>
           </div>
         </section>
 
-        <section className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-8 lg:px-12">
+        <section className="flex min-h-0 items-start justify-center px-4 py-6 sm:px-8 sm:py-8 lg:min-h-screen lg:items-center lg:px-12 lg:py-8">
           <div className="w-full max-w-md">
             <Link
               to="/"
-              className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-950"
+              className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-950 sm:mb-6"
             >
               <ArrowLeft className="h-4 w-4" />
               Voltar ao início
             </Link>
 
-            <Card className="border-white/70 bg-white/95 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] backdrop-blur-xl">
+            <Card className="w-full border-white/70 bg-white/95 shadow-[0_30px_80px_-35px_rgba(15,23,42,.35)] backdrop-blur-xl">
               <CardHeader className="pb-4">
-                <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+                <CardTitle className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
                   Acesso à plataforma
                 </CardTitle>
                 <CardDescription className="text-slate-500">
