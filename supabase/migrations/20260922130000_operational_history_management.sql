@@ -79,9 +79,8 @@ BEGIN
     RAISE EXCEPTION 'O passageiro não pode cancelar um pedido já alocado/agendado';
   END IF;
 
-  UPDATE public.pedidos_transporte
-  SET estado = 'cancelado'
-  WHERE id = _pedido_id;
+  EXECUTE 'UPDATE public.pedidos_transporte SET estado = $1::public.estado_pedido WHERE id = $2'
+    USING 'cancelado', _pedido_id;
 END;
 $function$;
 
