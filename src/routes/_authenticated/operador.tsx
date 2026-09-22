@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import MapaVeiculos from "@/components/MapaVeiculos";
 import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
+import { Pencil, Trash2, X, Save } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/_authenticated/operador")({
@@ -362,6 +363,53 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const [hora, setHora] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [aEditar, setAEditar] = useState(false);
+  const [nomeEdicao, setNomeEdicao] = useState(rota.nome);
+  const [inicioEdicao, setInicioEdicao] = useState(rota.hora_inicio?.slice(0, 5) ?? "");
+  const [fimEdicao, setFimEdicao] = useState(rota.hora_fim?.slice(0, 5) ?? "");
+  const [previstosEdicao, setPrevistosEdicao] = useState(String(rota.passageiros_previstos ?? ""));
+
+  const editarRota = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("rotas").update({
+        nome: nomeEdicao.trim(),
+        hora_inicio: inicioEdicao || null,
+        hora_fim: fimEdicao || null,
+        passageiros_previstos: previstosEdicao ? Number(previstosEdicao) : null,
+      }).eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rota actualizada");
+      setAEditar(false);
+      invalidate("rotas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminarRota = useMutation({
+    mutationFn: async () => {
+      const { count, error: countError } = await supabase
+        .from("viagens_passageiro")
+        .select("id", { count: "exact", head: true })
+        .eq("rota_id", rota.id);
+      if (countError) throw countError;
+      if ((count ?? 0) > 0) {
+        throw new Error("Esta rota já possui atribuições/bilhetes e não pode ser eliminada. Use 'cancelada' para a retirar da operação.");
+      }
+
+      const { error: paragensError } = await supabase.from("paragens").delete().eq("rota_id", rota.id);
+      if (paragensError) throw paragensError;
+
+      const { error } = await supabase.from("rotas").delete().eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Rota eliminada");
+      invalidate("rotas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const addParagem = useMutation({
     mutationFn: async () => {
@@ -425,10 +473,34 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-3 text-base">
-          {rota.nome}
+          {aEditar ? (
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <Input className="h-8 w-52" value={nomeEdicao} onChange={(e) => setNomeEdicao(e.target.value)} />
+              <Input className="h-8 w-28" type="time" value={inicioEdicao} onChange={(e) => setInicioEdicao(e.target.value)} />
+              <Input className="h-8 w-28" type="time" value={fimEdicao} onChange={(e) => setFimEdicao(e.target.value)} />
+              <Input className="h-8 w-28" type="number" min={0} placeholder="Previstos" value={previstosEdicao} onChange={(e) => setPrevistosEdicao(e.target.value)} />
+              <Button size="sm" disabled={!nomeEdicao.trim() || editarRota.isPending} onClick={() => editarRota.mutate()}><Save className="mr-1 h-4 w-4" />Guardar</Button>
+              <Button size="sm" variant="ghost" disabled={editarRota.isPending} onClick={() => { setAEditar(false); setNomeEdicao(rota.nome); }}><X className="mr-1 h-4 w-4" />Cancelar</Button>
+            </div>
+          ) : (
+            <>
+              {rota.nome}
           {rota.veiculos && <Badge variant="secondary">{rota.veiculos.nome}</Badge>}
           {rota.hora_inicio && <span className="text-xs font-normal text-muted-foreground">{rota.hora_inicio.slice(0, 5)}–{rota.hora_fim?.slice(0, 5) ?? ""}</span>}
-          <Badge variant={COR_ESTADO_ROTA[rota.estado] ?? "outline"}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</Badge>
+              <Badge variant={COR_ESTADO_ROTA[rota.estado] ?? "outline"}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</Badge>
+              <Button size="sm" variant="outline" className="h-8" onClick={() => setAEditar(true)} disabled={aEditar}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8"
+                disabled={eliminarRota.isPending || !["rascunho", "cancelada"].includes(rota.estado)}
+                title={rota.estado === "rascunho" || rota.estado === "cancelada" ? "Eliminar rota" : "A rota só pode ser eliminada quando está em rascunho ou cancelada e não possui atribuições"}
+                onClick={() => {
+                  if (window.confirm(`Eliminar a rota "${rota.nome}"? Esta acção não pode ser desfeita.`)) eliminarRota.mutate();
+                }}
+              ><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
+            </>
+          )}
           <select
             className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
             value={rota.estado}
@@ -440,6 +512,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
               <option key={valor} value={valor}>{ESTADOS_ROTA[valor] ?? valor}</option>
             ))}
           </select>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
