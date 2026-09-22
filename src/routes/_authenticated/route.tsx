@@ -468,103 +468,103 @@ function Layout() {
     <div className="min-h-screen bg-secondary">
 
       <header className="relative bg-sidebar text-sidebar-foreground">
+        <div className="mx-auto max-w-6xl px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex min-h-11 items-center gap-2 sm:gap-3">
+            <Link
+              to="/"
+              className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight sm:text-base"
+              onClick={fecharMenuMobile}
+            >
+              PickApp Mobility
+            </Link>
 
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+            <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 text-sm md:flex">
+              {links.map((l) => (
+                <NavLink key={l.to} to={l.to}>
+                  {l.label}
+                </NavLink>
+              ))}
+            </nav>
 
-          <Link
-            to="/"
-            className="font-semibold tracking-tight"
-          >
-            PickApp Mobility
-          </Link>
+            {papelAtual && (
+              <span className="hidden max-w-36 truncate rounded-md bg-sidebar-accent px-2.5 py-1.5 text-xs font-medium sm:inline-flex sm:max-w-none">
+                {papelAtual === "admin" && "Administrador"}
+                {papelAtual === "operador" && "Operador"}
+                {papelAtual === "motorista" && "Motorista"}
+                {papelAtual === "passageiro" && "Passageiro"}
+                {papelAtual === "responsavel_grupo" && "Resp. Grupo"}
+              </span>
+            )}
 
-          <nav className="hidden flex-1 flex-wrap gap-1 text-sm md:flex">
+            {data?.user?.id && (
+              <SinoNotificacoes userId={data.user.id} />
+            )}
 
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-              >
-                {l.label}
-              </NavLink>
-            ))}
+            <Button
+              size="sm"
+              variant="secondary"
+              className="hidden sm:inline-flex"
+              onClick={sair}
+            >
+              Sair
+            </Button>
 
-          </nav>
-
-          <div className="ml-auto flex items-center gap-1 md:hidden">
             <Button
               variant="ghost"
               size="icon"
-              className="min-h-11 min-w-11 text-sidebar-foreground hover:bg-sidebar-accent"
+              className="min-h-11 min-w-11 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent md:hidden"
               onClick={() => setMenuMobileAberto((v) => !v)}
-              aria-label="Abrir menu"
+              aria-label={menuMobileAberto ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={menuMobileAberto}
             >
               {menuMobileAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
 
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto pb-0.5 sm:hidden">
+            {papelAtual && (
+              <span className="shrink-0 rounded-md bg-sidebar-accent px-2.5 py-1.5 text-xs font-medium">
+                {papelAtual === "admin" && "Administrador"}
+                {papelAtual === "operador" && "Operador"}
+                {papelAtual === "motorista" && "Motorista"}
+                {papelAtual === "passageiro" && "Passageiro"}
+                {papelAtual === "responsavel_grupo" && "Resp. Grupo"}
+              </span>
+            )}
+
+            {data?.papeis && data.papeis.length > 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+                onClick={trocarPapel}
+              >
+                Trocar papel
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              variant="secondary"
+              className="ml-auto shrink-0"
+              onClick={sair}
+            >
+              Sair
+            </Button>
+          </div>
+
           {menuMobileAberto && (
-            <div className="absolute left-0 right-0 top-full z-50 border-t bg-sidebar p-3 shadow-lg md:hidden">
-              <nav className="flex flex-col gap-1">
+            <div className="mt-2 border-t border-sidebar-border pt-2 md:hidden">
+              <nav className="grid gap-1">
                 {links.map((l) => (
-                  <NavLink key={l.to} to={l.to}>
+                  <NavLink key={l.to} to={l.to} onNavigate={fecharMenuMobile}>
                     {l.label}
                   </NavLink>
                 ))}
               </nav>
             </div>
           )}
-          {papelAtual && (
-            <span className="rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium">
-              {papelAtual === "admin" &&
-                "Administrador"}
-
-              {papelAtual === "operador" &&
-                "Operador"}
-
-              {papelAtual === "motorista" &&
-                "Motorista"}
-
-              {papelAtual === "passageiro" &&
-                "Passageiro"}
-
-              {papelAtual === "responsavel_grupo" &&
-                "Resp. Grupo"}
-            </span>
-          )}
-
-          {/* 
-  Só aparece quando a conta possui
-  mais de um papel.
-*/}
-          {data?.papeis &&
-            data.papeis.length > 1 && (
-              <Button
-  size="sm"
-  variant="outline"
-  className="border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
-  onClick={trocarPapel}
->
-  Trocar papel
-</Button>
-            )}
-
-          {data?.user?.id && (
-            <SinoNotificacoes
-              userId={data.user.id}
-            />
-          )}
-
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={sair}
-          >
-            Sair
-          </Button>
-
         </div>
-
       </header>
 
       <main className="mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
@@ -595,14 +595,17 @@ function Layout() {
 function NavLink({
   to,
   children,
+  onNavigate,
 }: {
   to: Rota;
   children: React.ReactNode;
+  onNavigate?: () => void;
 }) {
   return (
     <Link
       to={to}
-      className="rounded-md px-3 py-1.5 transition-colors hover:bg-sidebar-accent"
+      onClick={onNavigate}
+      className="rounded-md px-3 py-2 transition-colors hover:bg-sidebar-accent md:py-1.5"
       activeProps={{
         className:
           "bg-sidebar-accent rounded-md px-3 py-1.5",
