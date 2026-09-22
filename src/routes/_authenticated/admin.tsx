@@ -64,6 +64,7 @@ const PAPEIS: Papel[] = [
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTULO_PAPEL: Record<Papel, string> = {
@@ -71,6 +72,7 @@ const ROTULO_PAPEL: Record<Papel, string> = {
   operador: "Operador",
   motorista: "Motorista",
   passageiro: "Passageiro",
+  responsavel_grupo: "Resp. Grupo",
 };
 
 type PerfilRow = {
