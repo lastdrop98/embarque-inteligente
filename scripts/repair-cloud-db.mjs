@@ -1,5 +1,121 @@
 import postgres from "postgres";
 
+const SQL = String.raw`ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'responsavel_grupo';
+-- SPLIT_AFTER_ENUM
+CREATE TABLE IF NOT EXISTS public.pontos_predefinidos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome text NOT NULL,
+  activo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_pontos_predefinidos_nome
+  ON public.pontos_predefinidos (lower(trim(nome)));
+ALTER TABLE public.rotas
+  ADD COLUMN IF NOT EXISTS ponto_partida_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT,
+  ADD COLUMN IF NOT EXISTS ponto_chegada_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT,
+  ADD COLUMN IF NOT EXISTS paragem_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT;
+ALTER TABLE public.pontos_predefinidos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS pontos_predefinidos_select ON public.pontos_predefinidos;
+CREATE POLICY pontos_predefinidos_select ON public.pontos_predefinidos
+FOR SELECT TO authenticated USING (auth.uid() IS NOT NULL);
+DROP POLICY IF EXISTS pontos_predefinidos_admin_insert ON public.pontos_predefinidos;
+CREATE POLICY pontos_predefinidos_admin_insert ON public.pontos_predefinidos
+FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS pontos_predefinidos_admin_update ON public.pontos_predefinidos;
+CREATE POLICY pontos_predefinidos_admin_update ON public.pontos_predefinidos
+FOR UPDATE TO authenticated USING (public.has_role(auth.uid(), 'admin'))
+WITH CHECK (public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS pontos_predefinidos_admin_delete ON public.pontos_predefinidos;
+CREATE POLICY pontos_predefinidos_admin_delete ON public.pontos_predefinidos
+FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'));
+ALTER TABLE public.papeis_utilizador ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS papeis_admin_manage ON public.papeis_utilizador;
+CREATE POLICY papeis_admin_manage ON public.papeis_utilizador
+FOR ALL TO authenticated
+USING (public.has_role(auth.uid(), 'admin'))
+WITH CHECK (public.has_role(auth.uid(), 'admin'));
+CREATE OR REPLACE FUNCTION public.criar_rota_operacional(
+  _nome text DEFAULT NULL,
+  _veiculo_id uuid DEFAULT NULL,
+  _motorista_id uuid DEFAULT NULL,
+  _ponto_partida_id uuid DEFAULT NULL,
+  _ponto_chegada_id uuid DEFAULT NULL,
+  _paragem_id uuid DEFAULT NULL,
+  _hora_inicio time DEFAULT NULL,
+  _hora_fim time DEFAULT NULL,
+  _passageiros_previstos integer DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  _rota_id uuid;
+  _nome_partida text;
+  _nome_chegada text;
+  _nome_paragem text;
+BEGIN
+  IF auth.uid() IS NULL OR (
+    NOT public.has_role(auth.uid(), 'admin')
+    AND NOT public.has_role(auth.uid(), 'operador')
+  ) THEN
+    RAISE EXCEPTION 'Sem permissão para criar uma rota';
+  END IF;
+  IF _ponto_partida_id IS NULL OR _ponto_chegada_id IS NULL THEN
+    RAISE EXCEPTION 'A rota deve ter ponto de partida e ponto de chegada';
+  END IF;
+  IF _ponto_partida_id = _ponto_chegada_id THEN
+    RAISE EXCEPTION 'O ponto de partida e o ponto de chegada devem ser diferentes';
+  END IF;
+  IF _paragem_id IS NOT NULL
+     AND (_paragem_id = _ponto_partida_id OR _paragem_id = _ponto_chegada_id) THEN
+    RAISE EXCEPTION 'A paragem intermédia deve ser diferente da partida e da chegada';
+  END IF;
+  SELECT nome INTO _nome_partida FROM public.pontos_predefinidos
+  WHERE id = _ponto_partida_id AND activo = true;
+  SELECT nome INTO _nome_chegada FROM public.pontos_predefinidos
+  WHERE id = _ponto_chegada_id AND activo = true;
+  IF _nome_partida IS NULL OR _nome_chegada IS NULL THEN
+    RAISE EXCEPTION 'O ponto de partida ou chegada não está disponível';
+  END IF;
+  IF _paragem_id IS NOT NULL THEN
+    SELECT nome INTO _nome_paragem FROM public.pontos_predefinidos
+    WHERE id = _paragem_id AND activo = true;
+    IF _nome_paragem IS NULL THEN
+      RAISE EXCEPTION 'A paragem intermédia não está disponível';
+    END IF;
+  END IF;
+  INSERT INTO public.rotas (
+    nome, veiculo_id, motorista_id, hora_inicio, hora_fim,
+    passageiros_previstos, ponto_partida_id, ponto_chegada_id, paragem_id, estado
+  )
+  VALUES (
+    COALESCE(NULLIF(trim(_nome), ''), _nome_partida || ' → ' || _nome_chegada),
+    _veiculo_id, _motorista_id, _hora_inicio, _hora_fim,
+    _passageiros_previstos, _ponto_partida_id, _ponto_chegada_id, _paragem_id, 'rascunho'
+  )
+  RETURNING id INTO _rota_id;
+  INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)
+  VALUES (_rota_id, _nome_partida, 1, _hora_inicio);
+  IF _paragem_id IS NOT NULL THEN
+    INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)
+    VALUES (_rota_id, _nome_paragem, 2, NULL);
+  END IF;
+  INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)
+  VALUES (
+    _rota_id, _nome_chegada,
+    CASE WHEN _paragem_id IS NULL THEN 2 ELSE 3 END,
+    _hora_fim
+  );
+  RETURN _rota_id;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uuid, uuid, time, time, integer)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uuid, uuid, time, time, integer)
+TO authenticated;
+NOTIFY pgrst, 'reload schema';`;
 const candidates = [
   process.env.LOVABLE_DB_MIGRATION_URL,
   process.env.DATABASE_URL,
@@ -9,31 +125,31 @@ const candidates = [
   process.env.SUPABASE_DB_CONNECTION_STRING,
 ].filter(Boolean);
 
-if (candidates.length === 0) {
-  console.log("[db] No PostgreSQL migration connection string is available; skipping direct Cloud repair.");
-  process.exit(0);
-}
-
-const SQL = "-- Embarque Inteligente: reparação directa e idempotente do contrato crítico do Lovable Cloud.\n-- Este ficheiro é executado pelo processo server/build quando existe uma connection string PostgreSQL.\n-- Não apaga dados.\n\nALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'responsavel_grupo';\n-- SPLIT_AFTER_ENUM\n\nCREATE TABLE IF NOT EXISTS public.pontos_predefinidos (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  nome text NOT NULL,\n  activo boolean NOT NULL DEFAULT true,\n  created_at timestamptz NOT NULL DEFAULT now()\n);\n\nCREATE UNIQUE INDEX IF NOT EXISTS ux_pontos_predefinidos_nome\n  ON public.pontos_predefinidos (lower(trim(nome)));\n\nALTER TABLE public.rotas\n  ADD COLUMN IF NOT EXISTS ponto_partida_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT,\n  ADD COLUMN IF NOT EXISTS ponto_chegada_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT,\n  ADD COLUMN IF NOT EXISTS paragem_id uuid REFERENCES public.pontos_predefinidos(id) ON DELETE RESTRICT;\n\nALTER TABLE public.pontos_predefinidos ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS pontos_predefinidos_select ON public.pontos_predefinidos;\nCREATE POLICY pontos_predefinidos_select\nON public.pontos_predefinidos\nFOR SELECT TO authenticated\nUSING (auth.uid() IS NOT NULL);\n\nDROP POLICY IF EXISTS pontos_predefinidos_admin_insert ON public.pontos_predefinidos;\nCREATE POLICY pontos_predefinidos_admin_insert\nON public.pontos_predefinidos\nFOR INSERT TO authenticated\nWITH CHECK (public.has_role(auth.uid(), 'admin'));\n\nDROP POLICY IF EXISTS pontos_predefinidos_admin_update ON public.pontos_predefinidos;\nCREATE POLICY pontos_predefinidos_admin_update\nON public.pontos_predefinidos\nFOR UPDATE TO authenticated\nUSING (public.has_role(auth.uid(), 'admin'))\nWITH CHECK (public.has_role(auth.uid(), 'admin'));\n\nDROP POLICY IF EXISTS pontos_predefinidos_admin_delete ON public.pontos_predefinidos;\nCREATE POLICY pontos_predefinidos_admin_delete\nON public.pontos_predefinidos\nFOR DELETE TO authenticated\nUSING (public.has_role(auth.uid(), 'admin'));\n\n-- O Admin precisa de poder gerir papéis através do painel.\nALTER TABLE public.papeis_utilizador ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS papeis_admin_manage ON public.papeis_utilizador;\nCREATE POLICY papeis_admin_manage\nON public.papeis_utilizador\nFOR ALL TO authenticated\nUSING (public.has_role(auth.uid(), 'admin'))\nWITH CHECK (public.has_role(auth.uid(), 'admin'));\n\nCREATE OR REPLACE FUNCTION public.criar_rota_operacional(\n  _nome text DEFAULT NULL,\n  _veiculo_id uuid DEFAULT NULL,\n  _motorista_id uuid DEFAULT NULL,\n  _ponto_partida_id uuid DEFAULT NULL,\n  _ponto_chegada_id uuid DEFAULT NULL,\n  _paragem_id uuid DEFAULT NULL,\n  _hora_inicio time DEFAULT NULL,\n  _hora_fim time DEFAULT NULL,\n  _passageiros_previstos integer DEFAULT NULL\n)\nRETURNS uuid\nLANGUAGE plpgsql\nSECURITY DEFINER\nSET search_path = public\nAS $function$\nDECLARE\n  _rota_id uuid;\n  _nome_partida text;\n  _nome_chegada text;\n  _nome_paragem text;\nBEGIN\n  IF auth.uid() IS NULL OR (\n    NOT public.has_role(auth.uid(), 'admin')\n    AND NOT public.has_role(auth.uid(), 'operador')\n  ) THEN\n    RAISE EXCEPTION 'Sem permissão para criar uma rota';\n  END IF;\n\n  IF _ponto_partida_id IS NULL OR _ponto_chegada_id IS NULL THEN\n    RAISE EXCEPTION 'A rota deve ter ponto de partida e ponto de chegada';\n  END IF;\n\n  IF _ponto_partida_id = _ponto_chegada_id THEN\n    RAISE EXCEPTION 'O ponto de partida e o ponto de chegada devem ser diferentes';\n  END IF;\n\n  IF _paragem_id IS NOT NULL\n     AND (_paragem_id = _ponto_partida_id OR _paragem_id = _ponto_chegada_id) THEN\n    RAISE EXCEPTION 'A paragem intermédia deve ser diferente da partida e da chegada';\n  END IF;\n\n  SELECT nome INTO _nome_partida\n  FROM public.pontos_predefinidos\n  WHERE id = _ponto_partida_id AND activo = true;\n\n  SELECT nome INTO _nome_chegada\n  FROM public.pontos_predefinidos\n  WHERE id = _ponto_chegada_id AND activo = true;\n\n  IF _nome_partida IS NULL OR _nome_chegada IS NULL THEN\n    RAISE EXCEPTION 'O ponto de partida ou chegada não está disponível';\n  END IF;\n\n  IF _paragem_id IS NOT NULL THEN\n    SELECT nome INTO _nome_paragem\n    FROM public.pontos_predefinidos\n    WHERE id = _paragem_id AND activo = true;\n\n    IF _nome_paragem IS NULL THEN\n      RAISE EXCEPTION 'A paragem intermédia não está disponível';\n    END IF;\n  END IF;\n\n  INSERT INTO public.rotas (\n    nome, veiculo_id, motorista_id, hora_inicio, hora_fim,\n    passageiros_previstos, ponto_partida_id, ponto_chegada_id, paragem_id, estado\n  )\n  VALUES (\n    COALESCE(NULLIF(trim(_nome), ''), _nome_partida || ' → ' || _nome_chegada),\n    _veiculo_id, _motorista_id, _hora_inicio, _hora_fim,\n    _passageiros_previstos, _ponto_partida_id, _ponto_chegada_id, _paragem_id, 'rascunho'\n  )\n  RETURNING id INTO _rota_id;\n\n  INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)\n  VALUES (_rota_id, _nome_partida, 1, _hora_inicio);\n\n  IF _paragem_id IS NOT NULL THEN\n    INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)\n    VALUES (_rota_id, _nome_paragem, 2, NULL);\n  END IF;\n\n  INSERT INTO public.paragens (rota_id, nome, ordem, hora_prevista)\n  VALUES (\n    _rota_id,\n    _nome_chegada,\n    CASE WHEN _paragem_id IS NULL THEN 2 ELSE 3 END,\n    _hora_fim\n  );\n\n  RETURN _rota_id;\nEND;\n$function$;\n\nREVOKE ALL ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uuid, uuid, time, time, integer)\nFROM PUBLIC, anon;\nGRANT EXECUTE ON FUNCTION public.criar_rota_operacional(text, uuid, uuid, uuid, uuid, uuid, time, time, integer)\nTO authenticated;\n\nNOTIFY pgrst, 'reload schema';";
-
-let lastError;
-for (const url of candidates) {
-  let sql;
+async function run(url) {
+  const sql = postgres(url, { max: 1, connect_timeout: 8, idle_timeout: 5 });
   try {
-    console.log("[db] Attempting direct Lovable Cloud database repair...");
-    sql = postgres(url, { max: 1, connect_timeout: 8, idle_timeout: 5 });
-    for (const statement of statements) {
-      await sql.unsafe(statement);
-    }
+    const [enumSql, remainingSql] = SQL.split("\n-- SPLIT_AFTER_ENUM\n");
+    await sql.unsafe(enumSql);
+    await sql.unsafe(remainingSql);
+  } finally {
     await sql.end();
-    console.log("[db] Direct Cloud repair completed successfully.");
-    process.exit(0);
-  } catch (error) {
-    lastError = error;
-    console.error("[db] Candidate connection failed:", error?.message ?? error);
-    try { await sql?.end({ timeout: 1 }); } catch {}
   }
 }
 
-console.error("[db] Direct Cloud repair could not be applied.", lastError?.message ?? lastError);
-process.exit(0);
+if (!candidates.length) {
+  console.log("[db] No direct PostgreSQL connection string available; skipping Cloud repair.");
+} else {
+  let repaired = false;
+  for (const url of candidates) {
+    try {
+      console.log("[db] Applying idempotent Cloud schema repair...");
+      await run(url);
+      console.log("[db] Cloud schema repair completed.");
+      repaired = true;
+      break;
+    } catch (error) {
+      console.error("[db] Repair candidate failed:", error instanceof Error ? error.message : error);
+    }
+  }
+  if (!repaired) console.error("[db] No available PostgreSQL connection accepted the repair; continuing without blocking the build.");
+}
