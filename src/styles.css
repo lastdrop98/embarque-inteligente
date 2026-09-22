@@ -346,3 +346,59 @@ div[id*="lovable-badge"] {
   color: #0f172a !important;
   stroke: currentColor !important;
 }
+
+
+/* Layout mobile PickApp: evita conteúdo espremido e garante que elementos largos
+   possam rolar horizontalmente em vez de ficarem sobrepostos. */
+@media (max-width: 767px) {
+  main {
+    max-width: 100%;
+  }
+
+  [role="tablist"] {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: thin;
+  }
+
+  [role="tablist"] > [role="tab"] {
+    flex: 0 0 auto;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  [role="dialog"] {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+  }
+
+  table {
+    min-width: max-content;
+  }
+
+  img, svg, video, canvas {
+    max-width: 100%;
+  }
+
+  .grid {
+    min-width: 0;
+  }
+
+  .card, [data-slot="card"] {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  [role="tablist"] > [role="tab"] {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  [role="tablist"] {
+    scrollbar-width: none;
+  }
+}
