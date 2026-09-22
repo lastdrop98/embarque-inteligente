@@ -679,6 +679,7 @@ export type Database = {
         | "alocado"
         | "agendado"
         | "rejeitado"
+        | "cancelado"
       estado_rota:
         | "rascunho"
         | "agendada"
@@ -845,6 +846,7 @@ export const Constants = {
         "alocado",
         "agendado",
         "rejeitado",
+        "cancelado",
       ],
       estado_rota: [
         "rascunho",
