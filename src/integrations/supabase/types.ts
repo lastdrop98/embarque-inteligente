@@ -194,6 +194,27 @@ export type Database = {
           },
         ]
       }
+      pontos_predefinidos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       passageiros: {
         Row: {
           categoria: Database["public"]["Enums"]["categoria_passageiro"]
@@ -437,6 +458,9 @@ export type Database = {
           nome: string
           passageiros_previstos: number | null
           pedido_id: string | null
+          ponto_partida_id: string | null
+          ponto_chegada_id: string | null
+          paragem_id: string | null
           veiculo_id: string | null
         }
         Insert: {
@@ -453,6 +477,9 @@ export type Database = {
           nome: string
           passageiros_previstos?: number | null
           pedido_id?: string | null
+          ponto_partida_id?: string | null
+          ponto_chegada_id?: string | null
+          paragem_id?: string | null
           veiculo_id?: string | null
         }
         Update: {
@@ -477,6 +504,27 @@ export type Database = {
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos_transporte"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotas_ponto_partida_id_fkey"
+            columns: ["ponto_partida_id"]
+            isOneToOne: false
+            referencedRelation: "pontos_predefinidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotas_ponto_chegada_id_fkey"
+            columns: ["ponto_chegada_id"]
+            isOneToOne: false
+            referencedRelation: "pontos_predefinidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotas_paragem_id_fkey"
+            columns: ["paragem_id"]
+            isOneToOne: false
+            referencedRelation: "pontos_predefinidos"
             referencedColumns: ["id"]
           },
           {
@@ -591,6 +639,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancelar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
+      criar_rota_operacional: { Args: { _nome?: string | null; _veiculo_id?: string | null; _motorista_id?: string | null; _ponto_partida_id?: string | null; _ponto_chegada_id?: string | null; _paragem_id?: string | null; _hora_inicio?: string | null; _hora_fim?: string | null; _passageiros_previstos?: number | null }; Returns: string }
+      eliminar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
+      limpar_dados_apresentacao: { Args: never; Returns: Json }
       concluir_rota_segura: { Args: { _rota_id: string }; Returns: Json }
       conta_activa: { Args: never; Returns: boolean }
       has_role: {
@@ -606,7 +658,7 @@ export type Database = {
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "operador" | "motorista" | "admin" | "passageiro"
+      app_role: "operador" | "motorista" | "admin" | "passageiro" | "responsavel_grupo"
       categoria_passageiro:
         | "atleta"
         | "coach"
@@ -771,7 +823,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["operador", "motorista", "admin", "passageiro"],
+      app_role: ["operador", "motorista", "admin", "passageiro", "responsavel_grupo"],
       categoria_passageiro: [
         "atleta",
         "coach",
