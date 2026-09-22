@@ -1,24 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "PickApp Mobility — Gestão de mobilidade" },
-      {
-        name: "description",
-        content:
-          "Gestão de rotas multiponto e check-in de passageiros por QR Code: operadores planeiam, motoristas validam embarques em tempo real.",
-      },
-      { property: "og:title", content: "PickApp Mobility — Gestão de mobilidade" },
-      {
-        property: "og:description",
-        content: "Rotas multiponto, bilhetes QR por passageiro e validação de embarque em tempo real.",
-      },
-    ],
-  }),
-  component: Index,
-});
+import {
+  Activity,
+  ArrowRight,
+  BellRing,
+  CheckCircle2,
+  ChevronDown,
+  Navigation,
+  QrCode,
+  Route as RouteIcon,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Users,
+  Zap,
+} from "lucide-react";
 
 function Index() {
   return (
