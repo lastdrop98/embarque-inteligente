@@ -24,6 +24,7 @@ const ESTADOS_PEDIDO: Record<string, { label: string; variant: "default" | "seco
   alocado: { label: "Alocado", variant: "default" },
   agendado: { label: "Agendado", variant: "default" },
   rejeitado: { label: "Rejeitado", variant: "destructive" },
+  cancelado: { label: "Cancelado", variant: "destructive" },
 };
 
 export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passageiro; userId: string }) {
@@ -96,6 +97,68 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const cancelarPedido = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("cancelar_pedido", { _pedido_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pedido cancelado");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminarPedido = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("eliminar_pedido", { _pedido_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pedido eliminado");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editarPedido = useMutation({
+    mutationFn: async ({ id, campos }: { id: string; campos: Record<string, unknown> }) => {
+      const { error } = await supabase.from("pedidos_transporte").update(campos as Database["public"]["Tables"]["pedidos_transporte"]["Update"]).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pedido actualizado");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editar = (p: any) => {
+    const tituloNovo = window.prompt("Título", p.titulo ?? "");
+    if (tituloNovo === null) return;
+    const origemNova = window.prompt("Origem", p.origem);
+    if (origemNova === null) return;
+    const destinoNovo = window.prompt("Destino", p.destino);
+    if (destinoNovo === null) return;
+    const dataNova = window.prompt("Data da viagem (AAAA-MM-DD)", p.data_viagem);
+    if (dataNova === null) return;
+    const horaNova = window.prompt("Hora (HH:MM, opcional)", p.hora?.slice(0, 5) ?? "");
+    if (horaNova === null) return;
+    const numNovo = window.prompt("Número de passageiros", String(p.num_passageiros));
+    if (numNovo === null) return;
+    editarPedido.mutate({
+      id: p.id,
+      campos: {
+        titulo: tituloNovo.trim(),
+        origem: origemNova.trim(),
+        destino: destinoNovo.trim(),
+        data_viagem: dataNova,
+        hora: horaNova.trim() || null,
+        num_passageiros: Math.max(1, Number(numNovo) || 1),
+      },
+    });
+  };
 
   const podeEnviar =
     dataViagem >= hoje &&
@@ -180,6 +243,21 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                 </div>
                 <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
                 <p className="text-xs text-muted-foreground">{pedido.num_passageiros} passageiro(s){pedido.tipo_viatura ? ` · ${pedido.tipo_viatura}` : ""}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {["rascunho", "submetido"].includes(pedido.estado) && (
+                    <Button size="sm" variant="outline" disabled={editarPedido.isPending} onClick={() => editar(pedido)}>Editar</Button>
+                  )}
+                  {["rascunho", "submetido", "em_analise", "aprovado"].includes(pedido.estado) && (
+                    <Button size="sm" variant="outline" disabled={cancelarPedido.isPending} onClick={() => {
+                      if (window.confirm("Cancelar este pedido?")) cancelarPedido.mutate(pedido.id);
+                    }}>Cancelar</Button>
+                  )}
+                  {["rascunho", "submetido", "cancelado", "rejeitado"].includes(pedido.estado) && (
+                    <Button size="sm" variant="destructive" disabled={eliminarPedido.isPending} onClick={() => {
+                      if (window.confirm("Eliminar este pedido? Esta acção não pode ser desfeita.")) eliminarPedido.mutate(pedido.id);
+                    }}>Eliminar</Button>
+                  )}
+                </div>
               </div>
             );
           }) : (
