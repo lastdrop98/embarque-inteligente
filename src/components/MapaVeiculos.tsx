@@ -111,6 +111,9 @@ export default function MapaVeiculos({
         zoom={pontos.length ? 13 : 12}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom={false}
+        zoomAnimation={false}
+        fadeAnimation={false}
+        markerZoomAnimation={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
