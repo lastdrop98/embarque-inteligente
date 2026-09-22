@@ -238,12 +238,13 @@ BEGIN
   DELETE FROM public.avaliacoes;
   DELETE FROM public.registos_embarque;
   DELETE FROM public.viagens_passageiro;
-  DELETE FROM public.pedidos_transporte;
   DELETE FROM public.incidentes;
   DELETE FROM public.notificacoes;
   DELETE FROM public.registo_auditoria;
   DELETE FROM public.paragens;
   DELETE FROM public.rotas;
+  DELETE FROM public.pedidos_transporte;
+  DELETE FROM public.passageiros;
   DELETE FROM public.veiculos;
   DELETE FROM public.delegacoes;
   DELETE FROM public.pontos_predefinidos;
