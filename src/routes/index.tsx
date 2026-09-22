@@ -41,7 +41,7 @@ function Index() {
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(0,200,83,.32),transparent_30%),radial-gradient(circle_at_85%_10%,rgba(59,130,246,.28),transparent_32%)]" />
         <div className="pointer-events-none absolute -right-24 top-20 h-72 w-72 animate-pulse rounded-full bg-cyan-300/10 blur-3xl" />
-        <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-4">
+        <header className="app-header-contrast relative z-10 mx-auto flex max-w-6xl items-center justify-between gap-4">
           <Link
             to="/"
             className="flex items-center gap-3 font-semibold tracking-tight text-white drop-shadow-md"
@@ -53,7 +53,7 @@ function Index() {
           </Link>
           <Button
             asChild
-            className="h-10 rounded-full border border-white/25 bg-white px-5 font-semibold text-slate-900 shadow-xl hover:bg-white/90"
+            className="app-login-button h-10 rounded-full border border-white/25 bg-white px-5 font-semibold text-slate-900 shadow-xl hover:bg-white/90"
           >
             <Link to="/auth" className="text-slate-900">
               Entrar
