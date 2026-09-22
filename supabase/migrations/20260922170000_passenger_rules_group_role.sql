@@ -10,7 +10,7 @@ ALTER TYPE public.app_role
 DO $$
 BEGIN
   UPDATE public.pedidos_transporte p
-  SET estado = 'cancelado'
+  SET estado = 'rejeitado'
   WHERE p.id IN (
     SELECT id
     FROM (
