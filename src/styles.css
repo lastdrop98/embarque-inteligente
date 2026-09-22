@@ -152,3 +152,69 @@ div[id*="lovable-badge"] {
   position: absolute !important;
   overflow: hidden !important;
 }
+
+
+@media (max-width: 767px) {
+  html {
+    overflow-x: hidden;
+  }
+
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+
+  table {
+    font-size: 0.8125rem;
+  }
+
+  /* Evita que tabelas largas destruam o layout no telemóvel. */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  /* Mantém diálogos e folhas utilizáveis em ecrãs pequenos. */
+  [role="dialog"] {
+    max-width: calc(100vw - 1rem);
+  }
+
+  /* Botões de acção em grupos compactos podem quebrar linha. */
+  .flex-wrap {
+    row-gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: clamp(1.25rem, 6vw, 1.65rem);
+    line-height: 1.2;
+  }
+
+  h2 {
+    font-size: clamp(1.05rem, 5vw, 1.35rem);
+    line-height: 1.25;
+  }
+
+  .p-6 {
+    padding: 1rem;
+  }
+
+  .p-8 {
+    padding: 1.25rem;
+  }
+}
