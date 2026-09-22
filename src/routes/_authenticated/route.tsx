@@ -473,7 +473,30 @@ function Layout() {
 
           </nav>
 
-          <div className="ml-auto flex items-center gap-1 md:hidden">\n            {data?.user?.id && <SinoNotificacoes userId={data.user.id} />}\n            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMenuMobileAberto((v) => !v)} aria-label="Abrir menu">\n              {menuMobileAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}\n            </Button>\n          </div>\n\n          {papelAtual && (
+          <div className="ml-auto flex items-center gap-1 md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="min-h-11 min-w-11 text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={() => setMenuMobileAberto((v) => !v)}
+              aria-label="Abrir menu"
+            >
+              {menuMobileAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+
+          {menuMobileAberto && (
+            <div className="absolute left-0 right-0 top-full z-50 border-t bg-sidebar p-3 shadow-lg md:hidden">
+              <nav className="flex flex-col gap-1">
+                {links.map((l) => (
+                  <NavLink key={l.to} to={l.to}>
+                    {l.label}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          )}
+\n          {papelAtual && (
             <span className="rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium">
               {papelAtual === "admin" &&
                 "Administrador"}
