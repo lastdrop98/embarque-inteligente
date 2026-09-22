@@ -496,6 +496,17 @@ function Layout() {
               </span>
             )}
 
+            {data?.papeis && data.papeis.length > 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="hidden shrink-0 border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground sm:inline-flex"
+                onClick={trocarPapel}
+              >
+                Trocar conta
+              </Button>
+            )}
+
             {data?.user?.id && (
               <SinoNotificacoes userId={data.user.id} />
             )}
