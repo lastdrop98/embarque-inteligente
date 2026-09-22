@@ -51,14 +51,6 @@ function Index() {
             </span>
             <span>PickApp Mobility</span>
           </Link>
-          <Link
-            to="/auth"
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full border border-white/40 bg-blue-600/55 px-6 text-sm font-extrabold text-white shadow-2xl backdrop-blur-xl transition hover:bg-blue-500/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            aria-label="Entrar na plataforma"
-          >
-            <span style={{ color: "#ffffff" }}>Entrar</span>
-            <ArrowRight className="ml-2 h-4 w-4 !text-white" style={{ color: "#ffffff" }} aria-hidden="true" />
-          </Link>
         </header>
 
         <div className="relative z-10 mx-auto mt-20 max-w-5xl text-center sm:mt-24">
