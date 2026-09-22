@@ -36,6 +36,13 @@
       "when": 1790071000000,
       "tag": "0004_corrigir_pontos_cancelamento_e_limpar_pedidos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790072000000,
+      "tag": "0005_permissoes_responsavel_e_criar_rota_operacional",
+      "breakpoints": true
     }
   ]
 }
