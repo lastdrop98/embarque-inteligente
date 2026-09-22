@@ -316,15 +316,18 @@ div[id*="lovable-badge"] {
 
 
 /* Contraste garantido para navegação e acções da plataforma. */
-.app-header-contrast,
-.app-header-contrast a,
-.app-header-contrast button {
+.app-header-contrast > a,
+.app-header-contrast > nav a,
+.app-header-contrast > span {
   color: #ffffff !important;
 }
-.app-header-contrast a:hover {
+.app-header-contrast > a:hover,
+.app-header-contrast > nav a:hover {
   color: #ffffff !important;
 }
-.app-login-button {
+.app-login-button,
+.app-header-contrast .app-login-button {
+
   display: inline-flex !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -333,6 +336,11 @@ div[id*="lovable-badge"] {
   border: 2px solid rgba(255,255,255,.9) !important;
   position: relative !important;
   z-index: 50 !important;
+}
+.app-login-button,
+.app-header-contrast .app-login-button,
+.app-header-contrast .app-login-button a {
+  color: #0f172a !important;
 }
 .app-login-button svg {
   color: #0f172a !important;
