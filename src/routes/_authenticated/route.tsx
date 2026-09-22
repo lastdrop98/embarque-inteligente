@@ -496,7 +496,7 @@ function Layout() {
               </nav>
             </div>
           )}
-\n          {papelAtual && (
+          {papelAtual && (
             <span className="rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium">
               {papelAtual === "admin" &&
                 "Administrador"}
