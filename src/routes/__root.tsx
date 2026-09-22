@@ -78,9 +78,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Rotas & Embarque QR" },
+      { title: "PickApp Mobility" },
       { name: "description", content: "Plataforma de gestão de mobilidade com embarque por QR Code." },
-      { property: "og:title", content: "Rotas & Embarque QR" },
+      { property: "og:title", content: "PickApp Mobility" },
       { property: "og:description", content: "Plataforma de gestão de mobilidade com embarque por QR Code." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
