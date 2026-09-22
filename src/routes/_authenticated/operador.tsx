@@ -255,6 +255,34 @@ function useRotas() {
 function Rotas() {
   const { data: rotas } = useRotas();
   const { data: veiculos } = useVeiculos();
+  const invalidate = useInvalidate();
+
+  const { data: pontos } = useQuery({
+    queryKey: ["pontos-predefinidos-operador"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pontos_predefinidos")
+        .select("id, nome")
+        .eq("activo", true)
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: motoristas } = useQuery({
+    queryKey: ["motoristas"],
+    queryFn: async () => {
+      const { data: papeis } = await supabase
+        .from("papeis_utilizador")
+        .select("user_id")
+        .eq("role", "motorista");
+      const ids = (papeis ?? []).map((p) => p.user_id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from("perfis").select("id, nome, email").in("id", ids);
+      return data ?? [];
+    },
+  });
 
   const eliminarTodasRotas = useMutation({
     mutationFn: async () => {
@@ -268,52 +296,95 @@ function Rotas() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  const invalidate = useInvalidate();
-  const { data: motoristas } = useQuery({
-    queryKey: ["motoristas"],
-    queryFn: async () => {
-      const { data: papeis } = await supabase.from("papeis_utilizador").select("user_id").eq("role", "motorista");
-      const ids = (papeis ?? []).map((p) => p.user_id);
-      if (!ids.length) return [];
-      const { data } = await supabase.from("perfis").select("id, nome, email").in("id", ids);
-      return data ?? [];
-    },
-  });
 
   const [nome, setNome] = useState("");
   const [veiculoId, setVeiculoId] = useState("");
   const [motoristaId, setMotoristaId] = useState("");
+  const [partidaId, setPartidaId] = useState("");
+  const [chegadaId, setChegadaId] = useState("");
+  const [paragemId, setParagemId] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [previstos, setPrevistos] = useState("");
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("rotas").insert({
-        nome,
-        veiculo_id: veiculoId || null,
-        motorista_id: motoristaId || null,
-        hora_inicio: inicio || null,
-        hora_fim: fim || null,
-        passageiros_previstos: previstos ? Number(previstos) : null,
+      if (!partidaId || !chegadaId) throw new Error("Escolha o ponto de partida e o ponto de chegada.");
+      if (partidaId === chegadaId) throw new Error("A partida e a chegada devem ser diferentes.");
+      if (paragemId && (paragemId === partidaId || paragemId === chegadaId)) {
+        throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
+      }
+
+      const { error } = await supabase.rpc("criar_rota_operacional", {
+        _nome: nome.trim() || null,
+        _veiculo_id: veiculoId || null,
+        _motorista_id: motoristaId || null,
+        _ponto_partida_id: partidaId,
+        _ponto_chegada_id: chegadaId,
+        _paragem_id: paragemId || null,
+        _hora_inicio: inicio || null,
+        _hora_fim: fim || null,
+        _passageiros_previstos: previstos ? Number(previstos) : null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Rota criada"); setNome(""); setPrevistos(""); invalidate("rotas"); },
+    onSuccess: () => {
+      toast.success("Rota criada");
+      setNome("");
+      setPartidaId("");
+      setChegadaId("");
+      setParagemId("");
+      setInicio("");
+      setFim("");
+      setPrevistos("");
+      invalidate("rotas");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><CardTitle>Nova rota</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-6">
-          <div className="space-y-2 md:col-span-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+        <CardHeader>
+          <CardTitle>Nova rota</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Os pontos são predefinidos pelo Administrador. O Operador apenas escolhe partida, chegada, no máximo uma paragem e o horário.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Ponto de partida</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={partidaId} onChange={(e) => setPartidaId(e.target.value)}>
+              <option value="">Escolha a partida</option>
+              {pontos?.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Ponto de chegada</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={chegadaId} onChange={(e) => setChegadaId(e.target.value)}>
+              <option value="">Escolha a chegada</option>
+              {pontos?.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Paragem intermédia (máx. 1)</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={paragemId} onChange={(e) => setParagemId(e.target.value)}>
+              <option value="">Sem paragem</option>
+              {pontos?.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Horário</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} aria-label="Hora de partida" />
+              <Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} aria-label="Hora de chegada" />
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>Veículo</Label>
             <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
               <option value="">—</option>
-              {veiculos?.map((v) => <option key={v.id} value={v.id}>{v.nome} {v.estado === "disponivel" ? "· disponível" : ""}</option>)}
+              {veiculos?.map((v) => <option key={v.id} value={v.id}>{v.nome}{v.estado === "disponivel" ? " · disponível" : ""}</option>)}
             </select>
           </div>
           <div className="space-y-2">
@@ -323,13 +394,14 @@ function Rotas() {
               {motoristas?.map((m) => <option key={m.id} value={m.id}>{m.nome || m.email}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2"><Label>Início</Label><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Fim</Label><Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
+          <div className="space-y-2">
+            <Label>Passageiros previstos</Label>
+            <Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} />
           </div>
-          <div className="space-y-2"><Label>Passageiros previstos</Label><Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} /></div>
-          <div className="md:col-span-6">
-            <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar rota</Button>
+          <div className="flex items-end">
+            <Button disabled={!partidaId || !chegadaId || criar.isPending} onClick={() => criar.mutate()}>
+              {criar.isPending ? "A criar..." : "Criar rota"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -338,20 +410,14 @@ function Rotas() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
           <div>
             <p className="text-sm font-semibold">Limpar todas as rotas</p>
-            <p className="text-xs text-muted-foreground">
-              Elimina todas as rotas criadas e os respetivos dados associados. Esta ação não pode ser desfeita.
-            </p>
+            <p className="text-xs text-muted-foreground">Elimina todas as rotas e os respetivos dados associados.</p>
           </div>
           <Button
             variant="destructive"
             disabled={eliminarTodasRotas.isPending}
             onClick={() => {
               const total = rotas.length;
-              if (window.confirm(
-                `Eliminar TODAS as ${total} rota(s)? Serão também eliminados os bilhetes, embarques e paragens associados. Esta ação não pode ser desfeita.`
-              )) {
-                eliminarTodasRotas.mutate();
-              }
+              if (window.confirm(`Eliminar TODAS as ${total} rota(s)? Esta ação não pode ser desfeita.`)) eliminarTodasRotas.mutate();
             }}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -361,7 +427,7 @@ function Rotas() {
       ) : null}
 
       {rotas?.map((r) => <RotaCard key={r.id} rota={r} />)}
-      {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não há rotas.</p>
+      {!rotas?.length && <p className="text-sm text-muted-foreground">Ainda não há rotas.</p>}
     </div>
   );
 }
@@ -398,61 +464,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const invalidate = useInvalidate();
   const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const { data: reconciliacao } = useReconciliacao(rota.id);
-  const [nome, setNome] = useState("");
-  const [hora, setHora] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-  const [aEditar, setAEditar] = useState(false);
-  const [nomeEdicao, setNomeEdicao] = useState(rota.nome);
-  const [inicioEdicao, setInicioEdicao] = useState(rota.hora_inicio?.slice(0, 5) ?? "");
-  const [fimEdicao, setFimEdicao] = useState(rota.hora_fim?.slice(0, 5) ?? "");
-  const [previstosEdicao, setPrevistosEdicao] = useState(String(rota.passageiros_previstos ?? ""));
-
-  const editarRota = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("rotas").update({
-        nome: nomeEdicao.trim(),
-        hora_inicio: inicioEdicao || null,
-        hora_fim: fimEdicao || null,
-        passageiros_previstos: previstosEdicao ? Number(previstosEdicao) : null,
-      }).eq("id", rota.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Rota actualizada");
-      setAEditar(false);
-      invalidate("rotas");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const eliminarRota = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.rpc("eliminar_rota_segura", { _rota_id: rota.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Rota eliminada");
-      invalidate("rotas");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const addParagem = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("paragens").insert({
-        rota_id: rota.id,
-        nome,
-        ordem: paragens.length + 1,
-        hora_prevista: hora || null,
-        latitude: lat ? Number(lat) : null,
-        longitude: lng ? Number(lng) : null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { setNome(""); setHora(""); setLat(""); setLng(""); invalidate("rotas"); },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
@@ -573,17 +584,9 @@ function RotaCard({ rota }: { rota: RotaRow }) {
           paragens={paragens}
           tracado
           altura={260}
-          onCliqueMapa={(latClique, lngClique) => {
-            if (!nome) {
-              toast.error("Escreve primeiro o nome da paragem, depois clica no mapa.");
-              return;
-            }
-            setLat(String(latClique));
-            setLng(String(lngClique));
-          }}
         />
         <p className="text-xs text-muted-foreground">
-          Escreve o nome da paragem em baixo e depois clica no mapa para definir a localização.
+          A partida, a chegada e a única paragem intermédia são definidas a partir da lista predefinida pelo Administrador.
         </p>
         <ol className="space-y-1">
           {paragens.map((p) => (
@@ -595,13 +598,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
           ))}
           {!paragens.length && <p className="text-sm text-muted-foreground">Sem paragens.</p>}
         </ol>
-        <div className="grid gap-2 md:grid-cols-5">
-          <Input placeholder="Nome da paragem" value={nome} onChange={(e) => setNome(e.target.value)} />
-          <Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-          <Input placeholder="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} />
-          <Input placeholder="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} />
-          <Button variant="outline" disabled={!nome || addParagem.isPending} onClick={() => addParagem.mutate()}>Adicionar paragem</Button>
-        </div>
+
       </CardContent>
     </Card>
   );
