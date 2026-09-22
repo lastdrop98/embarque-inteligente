@@ -104,6 +104,36 @@ function Conteudo({ userId }: { userId: string }) {
     };
   }, [passageiro?.id, qc]);
 
+  const { data: historicosOcultos } = useQuery({
+    queryKey: ["historico-ocultos", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("historico_ocultos")
+        .select("entidade_id")
+        .eq("user_id", userId)
+        .eq("entidade_tipo", "viagem");
+      if (error) throw error;
+      return new Set((data ?? []).map((item) => item.entidade_id));
+    },
+  });
+
+  async function ocultarHistorico(viagemId: string) {
+    const { error } = await supabase.from("historico_ocultos").upsert(
+      {
+        user_id: userId,
+        entidade_tipo: "viagem",
+        entidade_id: viagemId,
+      },
+      { onConflict: "user_id,entidade_tipo,entidade_id" },
+    );
+    if (error) {
+      toast.error("Não foi possível remover este histórico.");
+      return;
+    }
+    await qc.invalidateQueries({ queryKey: ["historico-ocultos", userId] });
+    toast.success("Viagem removida do seu histórico.");
+  }
+
   const { data: avaliacoes } = useQuery({
     queryKey: ["minhas-avaliacoes", passageiro?.id],
     enabled: !!viagens?.length,
@@ -119,7 +149,11 @@ function Conteudo({ userId }: { userId: string }) {
   const idsAvaliados = useMemo(() => new Set((avaliacoes ?? []).map((a) => a.viagem_id)), [avaliacoes]);
 
   const activas = (viagens ?? []).filter((v) => v.estado === "pendente" || v.estado === "a_bordo");
-  const historico = (viagens ?? []).filter((v) => v.estado === "concluida" || v.estado === "recusada");
+  const historico = (viagens ?? []).filter(
+    (v) =>
+      (v.estado === "concluida" || v.estado === "recusada") &&
+      !historicosOcultos?.has(v.id),
+  );
 
   const paraDados = (v: ViagemRow): DadosBilhete => ({
     token: v.token_qr,
@@ -188,7 +222,20 @@ function Conteudo({ userId }: { userId: string }) {
           <div className="space-y-3">
             {historico.map((v) => (
               <div key={v.id} className="space-y-2">
-                <BilhetePass dados={paraDados(v)} compacto />
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <BilhetePass dados={paraDados(v)} compacto />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => void ocultarHistorico(v.id)}
+                  >
+                    Remover
+                  </Button>
+                </div>
                 {v.estado === "concluida" && !idsAvaliados.has(v.id) && (
                   <FormularioAvaliacao viagemId={v.id} passageiroId={passageiro.id} />
                 )}
