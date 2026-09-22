@@ -53,21 +53,35 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
 
   const criarPedido = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("pedidos_transporte").insert({
-        titulo: titulo.trim() || `Pedido de transporte — ${dataViagem}`,
-        data_viagem: dataViagem,
-        hora: hora || null,
-        origem: origem.trim(),
-        destino: destino.trim(),
-        num_passageiros: numPassageiros,
-        tipo_viatura: tipoViatura.trim() || null,
-        observacoes: observacoes.trim() || null,
-        categoria: passageiro.categoria,
-        passageiro_id: passageiro.id,
-        criado_por: userId,
-        estado: "submetido",
-      });
+      const { data, error } = await supabase
+        .from("pedidos_transporte")
+        .insert({
+          titulo: titulo.trim() || `Pedido de transporte — ${dataViagem}`,
+          data_viagem: dataViagem,
+          hora: hora || null,
+          origem: origem.trim(),
+          destino: destino.trim(),
+          num_passageiros: numPassageiros,
+          tipo_viatura: tipoViatura.trim() || null,
+          observacoes: observacoes.trim() || null,
+          categoria: passageiro.categoria,
+          passageiro_id: passageiro.id,
+          criado_por: userId,
+          estado: "submetido",
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      // A notificação não deve impedir a criação do pedido.
+      try {
+        const { error: notifError } = await supabase.rpc("notificar_novo_pedido", {
+          _pedido_id: data.id,
+        });
+        if (notifError) console.error(notifError);
+      } catch (e) {
+        console.error(e);
+      }
     },
     onSuccess: () => {
       toast.success("Pedido de transporte enviado");

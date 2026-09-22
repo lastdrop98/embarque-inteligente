@@ -591,6 +591,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      concluir_rota_segura: { Args: { _rota_id: string }; Returns: Json }
       conta_activa: { Args: never; Returns: boolean }
       has_role: {
         Args: {
@@ -599,6 +600,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      iniciar_rota_segura: { Args: { _rota_id: string }; Returns: Json }
+      notificar_novo_pedido: { Args: { _pedido_id: string }; Returns: number }
       pode_gerir_rota: { Args: { _rota_id: string }; Returns: boolean }
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
     }
