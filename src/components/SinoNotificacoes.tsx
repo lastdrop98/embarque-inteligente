@@ -60,6 +60,19 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
     qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
   }
 
+  async function removerNotificacao(id: string) {
+    const { error } = await supabase
+      .from("notificacoes")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
+  }
+
   return (
     <DropdownMenu
       open={aberto}
@@ -83,11 +96,29 @@ export function SinoNotificacoes({ userId }: { userId: string }) {
         <DropdownMenuSeparator />
         {!data?.length && <p className="px-2 py-4 text-center text-sm text-muted-foreground">Sem notificações.</p>}
         {data?.slice(0, 10).map((n) => (
-          <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5 whitespace-normal">
-            <span className="text-sm">{n.mensagem}</span>
-            <span className="text-xs text-muted-foreground">
-              {new Date(n.created_at).toLocaleString("pt-PT")}
+          <DropdownMenuItem
+            key={n.id}
+            onSelect={(e) => e.preventDefault()}
+            className="flex items-start justify-between gap-2 whitespace-normal"
+          >
+            <span className="flex flex-col items-start gap-0.5">
+              <span className="text-sm">{n.mensagem}</span>
+              <span className="text-xs text-muted-foreground">
+                {new Date(n.created_at).toLocaleString("pt-PT")}
+              </span>
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Remover notificação"
+              className="h-6 w-6 shrink-0 text-muted-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                removerNotificacao(n.id);
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
