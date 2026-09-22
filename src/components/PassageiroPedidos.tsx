@@ -210,7 +210,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                 <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
                 <p className="text-xs text-muted-foreground">{pedido.num_passageiros} passageiro(s){pedido.tipo_viatura ? ` · ${pedido.tipo_viatura}` : ""}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {["rascunho", "submetido", "em_analise", "aprovado"].includes(pedido.estado) && (
+                  {["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"].includes(pedido.estado) && (
                     <Button size="sm" variant="outline" disabled={cancelarPedido.isPending} onClick={() => {
                       if (window.confirm("Cancelar este pedido de viagem?")) cancelarPedido.mutate(pedido.id);
                     }}>Cancelar pedido</Button>
