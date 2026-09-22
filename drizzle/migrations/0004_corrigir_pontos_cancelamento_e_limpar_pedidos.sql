@@ -160,6 +160,3 @@ GRANT EXECUTE ON FUNCTION public.eliminar_pedido(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.eliminar_meus_pedidos() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.eliminar_meus_pedidos() TO authenticated;
 
--- Limpeza solicitada pelo utilizador: remover todos os pedidos já existentes.
--- O WHERE explícito evita o bloqueio "DELETE requires a WHERE clause".
-DELETE FROM public.pedidos_transporte WHERE TRUE;
