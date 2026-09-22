@@ -43,6 +43,13 @@
       "when": 1790072000000,
       "tag": "0005_permissoes_responsavel_e_criar_rota_operacional",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790079300000,
+      "tag": "0006_reparar_responsavel_grupo_e_rota",
+      "breakpoints": true
     }
   ]
 }
