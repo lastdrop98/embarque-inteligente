@@ -496,6 +496,9 @@ export type Database = {
           nome?: string
           passageiros_previstos?: number | null
           pedido_id?: string | null
+          ponto_partida_id?: string | null
+          ponto_chegada_id?: string | null
+          paragem_id?: string | null
           veiculo_id?: string | null
         }
         Relationships: [
