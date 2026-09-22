@@ -184,6 +184,31 @@ function Layout() {
       return;
     }
 
+    // Aceder directamente a uma área pelo URL deve respeitar o papel
+    // correspondente quando esse papel existe na conta. Isto evita que
+    // /admin seja imediatamente enviado para /passageiro por uma escolha
+    // antiga guardada no sessionStorage.
+    const papelDiretoPorRota: Array<[Rota, Papel]> = [
+      ["/admin", "admin"],
+      ["/operador", "operador"],
+      ["/motorista", "motorista"],
+      ["/passageiro", "passageiro"],
+      ["/grupo", "responsavel_grupo"],
+    ];
+
+    const rotaDireta = papelDiretoPorRota.find(([rota]) =>
+      pathname === rota || pathname.startsWith(rota + "/")
+    );
+    const papelDaRota = rotaDireta?.[1];
+
+    if (papelDaRota && data.papeis.includes(papelDaRota)) {
+      if (papelAtual !== papelDaRota) {
+        gravarSessao("papel_sessao", papelDaRota);
+        // Não redireccionar para outra área: a rota pedida pelo utilizador é válida.
+      }
+      return;
+    }
+
     if (!papelAtual) {
       gravarSessao("papeis_disponiveis", JSON.stringify(data.papeis));
       navigate({ to: "/selecionar-papel", replace: true });
