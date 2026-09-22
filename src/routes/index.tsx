@@ -51,15 +51,15 @@ function Index() {
             </span>
             <span>PickApp Mobility</span>
           </Link>
-          <Button
-            asChild
-            className="app-login-button h-10 rounded-full border border-white/25 bg-white px-5 font-semibold text-slate-900 shadow-xl hover:bg-white/90"
+          <Link
+            to="/auth"
+            className="!important inline-flex h-11 shrink-0 items-center justify-center rounded-full border-2 border-white bg-[#00C853] px-6 text-sm font-extrabold !text-white shadow-2xl transition hover:bg-[#00A844] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            style={{ color: "#ffffff", backgroundColor: "#00C853" }}
+            aria-label="Entrar na plataforma"
           >
-            <Link to="/auth" className="text-slate-900">
-              Entrar
-              <ArrowRight className="ml-2 h-4 w-4 text-slate-900" />
-            </Link>
-          </Button>
+            <span style={{ color: "#ffffff" }}>Entrar</span>
+            <ArrowRight className="ml-2 h-4 w-4 !text-white" style={{ color: "#ffffff" }} aria-hidden="true" />
+          </Link>
         </header>
 
         <div className="relative z-10 mx-auto mt-20 max-w-5xl text-center sm:mt-24">
