@@ -499,8 +499,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
                   if (window.confirm(`Eliminar a rota "${rota.nome}"? Esta acção não pode ser desfeita.`)) eliminarRota.mutate();
                 }}
               ><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
-            </>
-          )}
               <select
                 className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
                 value={rota.estado}
