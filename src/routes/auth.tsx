@@ -23,7 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, MapPin, Route as RouteIcon, ShieldCheck, Sparkles } from "lucide-react";
 
 type Papel =
   | "admin"
