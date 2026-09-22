@@ -53,17 +53,15 @@ function MotoristaPage() {
   const { data: rotas } = useQuery({
     queryKey: ["minhas-rotas"],
     queryFn: async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Utilizador não autenticado.");
+
       const { data, error } = await supabase
-        (() => {
-        return supabase.auth.getUser().then(async ({ data: { user } }) => {
-          if (!user) throw new Error("Utilizador não autenticado.");
-          return supabase
-            .from("rotas")
-            .select("id, nome, motorista_id, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
-            .eq("motorista_id", user.id)
-            .order("created_at");
-        });
-      })();
+        .from("rotas")
+        .select("id, nome, estado, motorista_id, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
+        .eq("motorista_id", authData.user.id)
+        .order("created_at");
       if (error) throw error;
       return data;
     },
