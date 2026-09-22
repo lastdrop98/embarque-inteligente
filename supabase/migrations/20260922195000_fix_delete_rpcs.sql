@@ -71,11 +71,11 @@ BEGIN
   SELECT count(*) INTO _total FROM public.rotas;
 
   -- Ordem segura relativamente às foreign keys.
-  DELETE FROM public.viagens_passageiro;
-  DELETE FROM public.registos_embarque;
-  DELETE FROM public.incidentes;
-  DELETE FROM public.paragens;
-  DELETE FROM public.rotas;
+  DELETE FROM public.viagens_passageiro WHERE TRUE;
+  DELETE FROM public.registos_embarque WHERE TRUE;
+  DELETE FROM public.incidentes WHERE TRUE;
+  DELETE FROM public.paragens WHERE TRUE;
+  DELETE FROM public.rotas WHERE TRUE;
 
   RETURN COALESCE(_total, 0);
 END;
@@ -190,19 +190,19 @@ BEGIN
     RAISE EXCEPTION 'Apenas o Administrador pode limpar os dados da apresentação';
   END IF;
 
-  DELETE FROM public.avaliacoes;
-  DELETE FROM public.registos_embarque;
-  DELETE FROM public.viagens_passageiro;
-  DELETE FROM public.incidentes;
-  DELETE FROM public.notificacoes;
-  DELETE FROM public.registo_auditoria;
-  DELETE FROM public.paragens;
-  DELETE FROM public.rotas;
-  DELETE FROM public.pedidos_transporte;
-  DELETE FROM public.passageiros;
-  DELETE FROM public.veiculos;
-  DELETE FROM public.delegacoes;
-  DELETE FROM public.pontos_predefinidos;
+  DELETE FROM public.avaliacoes WHERE TRUE;
+  DELETE FROM public.registos_embarque WHERE TRUE;
+  DELETE FROM public.viagens_passageiro WHERE TRUE;
+  DELETE FROM public.incidentes WHERE TRUE;
+  DELETE FROM public.notificacoes WHERE TRUE;
+  DELETE FROM public.registo_auditoria WHERE TRUE;
+  DELETE FROM public.paragens WHERE TRUE;
+  DELETE FROM public.rotas WHERE TRUE;
+  DELETE FROM public.pedidos_transporte WHERE TRUE;
+  DELETE FROM public.passageiros WHERE TRUE;
+  DELETE FROM public.veiculos WHERE TRUE;
+  DELETE FROM public.delegacoes WHERE TRUE;
+  DELETE FROM public.pontos_predefinidos WHERE TRUE;
 
   RETURN jsonb_build_object(
     'ok', true,
