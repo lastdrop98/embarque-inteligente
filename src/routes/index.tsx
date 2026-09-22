@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Rotas & Embarque QR — Gestão de mobilidade" },
+      { title: "PickApp Mobility — Gestão de mobilidade" },
       {
         name: "description",
         content:
           "Gestão de rotas multiponto e check-in de passageiros por QR Code: operadores planeiam, motoristas validam embarques em tempo real.",
       },
-      { property: "og:title", content: "Rotas & Embarque QR — Gestão de mobilidade" },
+      { property: "og:title", content: "PickApp Mobility — Gestão de mobilidade" },
       {
         property: "og:description",
         content: "Rotas multiponto, bilhetes QR por passageiro e validação de embarque em tempo real.",
@@ -29,7 +29,7 @@ function Index() {
       >
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-sm uppercase tracking-[0.2em] opacity-70">Mobility Command Centre</p>
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">Rotas &amp; Embarque QR</h1>
+          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">PickApp Mobility</h1>
           <p className="mt-5 text-lg opacity-85">
             Planeie rotas com paragens ordenadas, atribua passageiros e confirme cada embarque com um QR Code
             pessoal e único.
