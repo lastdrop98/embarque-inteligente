@@ -654,3 +654,5 @@ function NavLink({
     </Link>
   );
 }
+
+// Visual accessibility polish synced from GitHub.
