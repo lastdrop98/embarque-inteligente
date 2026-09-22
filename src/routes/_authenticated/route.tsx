@@ -7,6 +7,8 @@ import {
 } from "@tanstack/react-router";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -341,6 +343,8 @@ function Layout() {
   const queryClient =
     useQueryClient();
 
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+
   let papelAtual: Papel | null = null;
 
   /*
@@ -385,6 +389,8 @@ function Layout() {
       ? LINKS_POR_PAPEL[papelAtual]
       : [];
 
+  function fecharMenuMobile() { setMenuMobileAberto(false); }
+
   function trocarPapel() {
     if (
       !data?.papeis ||
@@ -406,6 +412,7 @@ function Layout() {
       JSON.stringify(data.papeis)
     );
 
+    fecharMenuMobile();
     navigate({
       to: "/selecionar-papel",
       replace: true,
@@ -427,6 +434,7 @@ function Layout() {
 
     await supabase.auth.signOut();
 
+    fecharMenuMobile();
     navigate({
       to: "/auth",
       replace: true,
@@ -441,7 +449,7 @@ function Layout() {
   return (
     <div className="min-h-screen bg-secondary">
 
-      <header className="bg-sidebar text-sidebar-foreground">
+      <header className="relative bg-sidebar text-sidebar-foreground">
 
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
 
@@ -452,7 +460,7 @@ function Layout() {
             Rotas &amp; Embarque QR
           </Link>
 
-          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
+          <nav className="hidden flex-1 flex-wrap gap-1 text-sm md:flex">
 
             {links.map((l) => (
               <NavLink
@@ -465,7 +473,7 @@ function Layout() {
 
           </nav>
 
-          {papelAtual && (
+          <div className="ml-auto flex items-center gap-1 md:hidden">\n            {data?.user?.id && <SinoNotificacoes userId={data.user.id} />}\n            <Button variant="ghost" size="icon" className="min-h-11 min-w-11 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMenuMobileAberto((v) => !v)} aria-label="Abrir menu">\n              {menuMobileAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}\n            </Button>\n          </div>\n\n          {papelAtual && (
             <span className="rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium">
               {papelAtual === "admin" &&
                 "Administrador"}
@@ -515,7 +523,7 @@ function Layout() {
 
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
 
         {suspenso ? (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
