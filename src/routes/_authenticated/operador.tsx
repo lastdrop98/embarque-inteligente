@@ -501,17 +501,18 @@ function RotaCard({ rota }: { rota: RotaRow }) {
               ><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
             </>
           )}
-          <select
-            className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
-            value={rota.estado}
-            disabled={mudarEstado.isPending || proximosEstados.length === 0}
-            onChange={(e) => mudarEstado.mutate(e.target.value)}
-          >
-            <option value={rota.estado}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</option>
-            {proximosEstados.map((valor) => (
-              <option key={valor} value={valor}>{ESTADOS_ROTA[valor] ?? valor}</option>
-            ))}
-          </select>
+              <select
+                className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
+                value={rota.estado}
+                disabled={mudarEstado.isPending || proximosEstados.length === 0}
+                onChange={(e) => mudarEstado.mutate(e.target.value)}
+              >
+                <option value={rota.estado}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</option>
+                {proximosEstados.map((valor) => (
+                  <option key={valor} value={valor}>{ESTADOS_ROTA[valor] ?? valor}</option>
+                ))}
+              </select>
+            </>
           )}
         </CardTitle>
       </CardHeader>
