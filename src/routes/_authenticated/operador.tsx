@@ -16,7 +16,7 @@ import type { Database } from "@/integrations/supabase/types";
 export const Route = createFileRoute("/_authenticated/operador")({
   head: () => ({
     meta: [
-      { title: "Painel do Operador — Rotas & Embarque QR" },
+      { title: "Painel do Operador — PickApp Mobility" },
       { name: "description", content: "Criar rotas, paragens, passageiros e bilhetes QR." },
       { property: "og:title", content: "Painel do Operador" },
       { property: "og:description", content: "Criar rotas, paragens, passageiros e bilhetes QR." },
