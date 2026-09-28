@@ -30,6 +30,7 @@ const PAPEIS_VALIDOS: Papel[] = [
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTA_POR_PAPEL: Record<Papel, Rota> = {
@@ -37,6 +38,7 @@ const ROTA_POR_PAPEL: Record<Papel, Rota> = {
   operador: "/operador",
   motorista: "/motorista",
   passageiro: "/passageiro",
+  responsavel_grupo: "/passageiro",
 };
 
 const LINKS_POR_PAPEL: Record<
@@ -77,10 +79,11 @@ const LINKS_POR_PAPEL: Record<
   ],
 
   passageiro: [
-    {
-      to: "/passageiro",
-      label: "Os meus bilhetes",
-    },
+    { to: "/passageiro", label: "Os meus bilhetes" },
+  ],
+
+  responsavel_grupo: [
+    { to: "/passageiro", label: "Gestão do grupo" },
   ],
 };
 
@@ -137,6 +140,7 @@ function rotaPermitidaParaPapel(
       );
 
     case "passageiro":
+    case "responsavel_grupo":
       return (
         pathname === "/passageiro" ||
         pathname.startsWith("/passageiro/")
@@ -439,8 +443,16 @@ function Layout() {
     data.activo === false;
 
   return (
-    <div className="min-h-screen bg-secondary">
-
+    <div className="relative min-h-screen overflow-x-hidden bg-secondary">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-fixed opacity-[0.13]"
+        style={{
+          backgroundImage:
+            "url(https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1800&q=80)",
+        }}
+      />
+      <div className="relative min-h-screen">
       <header className="bg-sidebar text-sidebar-foreground">
 
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
@@ -449,7 +461,7 @@ function Layout() {
             to="/"
             className="font-semibold tracking-tight"
           >
-            Rotas &amp; Embarque QR
+            <img src="/pickapp-logo.svg" alt="PickApp Mobility" className="h-8 w-auto max-w-[180px]" />
           </Link>
 
           <nav className="flex flex-1 flex-wrap gap-1 text-sm">
@@ -476,8 +488,8 @@ function Layout() {
               {papelAtual === "motorista" &&
                 "Motorista"}
 
-              {papelAtual === "passageiro" &&
-                "Passageiro"}
+              {papelAtual === "passageiro" && "Passageiro"}
+          {papelAtual === "responsavel_grupo" && "Responsável de Grupo"}
             </span>
           )}
 
