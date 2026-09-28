@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +24,6 @@ const ESTADO_INFO: Record<string, { rotulo: string; cor: string }> = {
 
 export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; compacto?: boolean }) {
   const [qr, setQr] = useState("");
-  const [copiado, setCopiado] = useState(false);
   const info = ESTADO_INFO[dados.estado] ?? { rotulo: dados.estado, cor: "bg-secondary" };
 
   useEffect(() => {
@@ -68,22 +66,7 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             </div>
           )}
         </div>
-                <div className="mx-auto max-w-xs rounded-2xl border bg-muted/40 p-3">
-          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Código alternativo</p>
-          <div className="mt-1 flex items-center justify-center gap-2">
-            <span className="font-mono text-xl font-bold tracking-[0.18em] text-foreground">{dados.token}</span>
-            <button
-              type="button"
-              aria-label="Copiar código alternativo"
-              title="Copiar código"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all hover:-translate-y-0.5 hover:bg-accent active:scale-95"
-              onClick={() => void copiarCodigo()}
-            >
-              {copiado ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">Use este código apenas se não puder fazer a leitura do QR.</p>
-        </div>
+        <p className="font-mono text-[10px] text-muted-foreground">{dados.token}</p>
       </CardContent>
     </Card>
   );
