@@ -22,6 +22,13 @@
       "when": 1790061386785,
       "tag": "0002_notificar_novo_pedido_e_delete_notificacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790578980234,
+      "tag": "0003_notificacoes_incidentes_e_motorista",
+      "breakpoints": true
     }
   ]
 }
