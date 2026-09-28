@@ -455,16 +455,16 @@ function Layout() {
       <div className="relative min-h-screen">
       <header className="bg-sidebar text-sidebar-foreground">
 
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
 
           <Link
             to="/"
-            className="font-semibold tracking-tight"
+            className="shrink-0 font-semibold tracking-tight"
           >
-            <img src="/pickapp-logo-light.svg" alt="PickApp Mobility" className="h-8 w-auto max-w-[180px]" />
+            <img src="/pickapp-logo-light.svg" alt="PickApp Mobility" className="h-8 w-auto max-w-[170px]" />
           </Link>
 
-          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
+          <nav className="order-last min-w-0 basis-full overflow-x-auto whitespace-nowrap text-sm md:order-none md:flex md:flex-1 md:basis-auto md:gap-1">
 
             {links.map((l) => (
               <NavLink
