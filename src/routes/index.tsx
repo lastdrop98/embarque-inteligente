@@ -8,7 +8,6 @@ import {
   QrCode,
   Route as RouteIcon,
   ShieldCheck,
-  Sparkles,
   Users,
   Zap,
 } from "lucide-react";
@@ -46,16 +45,16 @@ function Index() {
             to="/"
             className="flex items-center gap-3 font-semibold tracking-tight text-white drop-shadow-md"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-md">
-              <Navigation className="h-5 w-5 text-white" />
-            </span>
-            <span>PickApp Mobility</span>
+            <img
+              src="/pickapp-logo.svg"
+              alt="PickApp Mobility"
+              className="h-10 w-auto max-w-[190px] object-contain"
+            />
           </Link>
         </header>
 
         <div className="relative z-10 mx-auto mt-20 max-w-5xl text-center sm:mt-24">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md">
-            <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
             Mobilidade inteligente em tempo real
           </div>
           <h1 className="mt-6 text-4xl font-bold tracking-[-0.04em] text-white drop-shadow-lg sm:text-6xl lg:text-7xl">
@@ -186,8 +185,13 @@ function Index() {
         </div>
       </section>
 
-      <footer className="px-4 pb-8 text-center text-xs text-muted-foreground">
-        PickApp Mobility · Embarque Inteligente
+      <footer className="flex flex-col items-center gap-3 px-4 pb-8 text-center text-xs text-muted-foreground">
+        <img
+          src="/pickapp-logo.svg"
+          alt="PickApp Mobility"
+          className="h-8 w-auto object-contain"
+        />
+        <span>PickApp Mobility · Embarque Inteligente</span>
       </footer>
     </main>
   );
