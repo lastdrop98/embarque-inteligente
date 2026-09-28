@@ -255,6 +255,7 @@ function Rotas() {
   const { data: rotas } = useRotas();
   const { data: veiculos } = useVeiculos();
   const invalidate = useInvalidate();
+
   const { data: motoristas } = useQuery({
     queryKey: ["motoristas"],
     queryFn: async () => {
@@ -266,35 +267,99 @@ function Rotas() {
     },
   });
 
+  const { data: pontos = [] } = useQuery({
+    queryKey: ["pontos-predefinidos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pontos_predefinidos")
+        .select("id, nome")
+        .eq("activo", true)
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const [nome, setNome] = useState("");
   const [veiculoId, setVeiculoId] = useState("");
   const [motoristaId, setMotoristaId] = useState("");
+  const [partidaId, setPartidaId] = useState("");
+  const [chegadaId, setChegadaId] = useState("");
+  const [paragemId, setParagemId] = useState("");
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [previstos, setPrevistos] = useState("");
 
   const criar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("rotas").insert({
-        nome,
-        veiculo_id: veiculoId || null,
-        motorista_id: motoristaId || null,
-        hora_inicio: inicio || null,
-        hora_fim: fim || null,
-        passageiros_previstos: previstos ? Number(previstos) : null,
+      if (!partidaId || !chegadaId) throw new Error("Seleccione o ponto de partida e o ponto de chegada.");
+      if (partidaId === chegadaId) throw new Error("Partida e chegada devem ser diferentes.");
+      if (paragemId && (paragemId === partidaId || paragemId === chegadaId)) {
+        throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
+      }
+
+      const { error } = await supabase.rpc("criar_rota_operacional", {
+        _nome: nome.trim() || null,
+        _veiculo_id: veiculoId || null,
+        _motorista_id: motoristaId || null,
+        _ponto_partida_id: partidaId,
+        _ponto_chegada_id: chegadaId,
+        _paragem_id: paragemId || null,
+        _hora_inicio: inicio || null,
+        _hora_fim: fim || null,
+        _passageiros_previstos: previstos ? Number(previstos) : null,
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Rota criada"); setNome(""); setPrevistos(""); invalidate("rotas"); },
+    onSuccess: () => {
+      toast.success("Rota criada com sucesso");
+      setNome("");
+      setPartidaId("");
+      setChegadaId("");
+      setParagemId("");
+      setInicio("");
+      setFim("");
+      setPrevistos("");
+      invalidate("rotas");
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader><CardTitle>Nova rota</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-6">
-          <div className="space-y-2 md:col-span-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+        <CardHeader>
+          <CardTitle>Nova rota operacional</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Use apenas pontos predefinidos. A rota admite no máximo uma paragem intermédia.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2 lg:col-span-2">
+            <Label>Nome da rota (opcional)</Label>
+            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Centro → Baixa" />
+          </div>
+          <div className="space-y-2">
+            <Label>Ponto de partida</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={partidaId} onChange={(e) => setPartidaId(e.target.value)}>
+              <option value="">Seleccione...</option>
+              {pontos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Paragem intermédia (opcional)</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={paragemId} onChange={(e) => setParagemId(e.target.value)}>
+              <option value="">Sem paragem</option>
+              {pontos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Ponto de chegada</Label>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={chegadaId} onChange={(e) => setChegadaId(e.target.value)}>
+              <option value="">Seleccione...</option>
+              {pontos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </div>
           <div className="space-y-2">
             <Label>Veículo</Label>
             <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={veiculoId} onChange={(e) => setVeiculoId(e.target.value)}>
@@ -313,9 +378,14 @@ function Rotas() {
             <div className="space-y-2"><Label>Início</Label><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
             <div className="space-y-2"><Label>Fim</Label><Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
           </div>
-          <div className="space-y-2"><Label>Passageiros previstos</Label><Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} /></div>
-          <div className="md:col-span-6">
-            <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar rota</Button>
+          <div className="space-y-2">
+            <Label>Passageiros previstos</Label>
+            <Input type="number" min={1} value={previstos} onChange={(e) => setPrevistos(e.target.value)} placeholder="Ex.: 20" />
+          </div>
+          <div className="md:col-span-2 lg:col-span-4">
+            <Button disabled={criar.isPending || !partidaId || !chegadaId} onClick={() => criar.mutate()}>
+              {criar.isPending ? "A criar rota..." : "Criar rota"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -358,26 +428,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const invalidate = useInvalidate();
   const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const { data: reconciliacao } = useReconciliacao(rota.id);
-  const [nome, setNome] = useState("");
-  const [hora, setHora] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
-
-  const addParagem = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("paragens").insert({
-        rota_id: rota.id,
-        nome,
-        ordem: paragens.length + 1,
-        hora_prevista: hora || null,
-        latitude: lat ? Number(lat) : null,
-        longitude: lng ? Number(lng) : null,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { setNome(""); setHora(""); setLat(""); setLng(""); invalidate("rotas"); },
-    onError: (e: Error) => toast.error(e.message),
-  });
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
@@ -386,7 +436,6 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         if (error) throw error;
         return;
       }
-
       const { error } = await supabase
         .from("rotas")
         .update({ estado: novoEstado as Database["public"]["Enums"]["estado_rota"] })
@@ -408,7 +457,10 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         .eq("rota_id", rota.id)
         .eq("estado", "pendente");
       if (error) throw error;
-      const { error: erroRota } = await supabase.from("rotas").update({ estado: "embarque_fechado" }).eq("id", rota.id);
+      const { error: erroRota } = await supabase
+        .from("rotas")
+        .update({ estado: "embarque_fechado" })
+        .eq("id", rota.id);
       if (erroRota) throw erroRota;
     },
     onSuccess: () => {
@@ -425,12 +477,12 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-3 text-base">
-          {rota.nome}
+          <span className="min-w-0 flex-1">{rota.nome}</span>
           {rota.veiculos && <Badge variant="secondary">{rota.veiculos.nome}</Badge>}
           {rota.hora_inicio && <span className="text-xs font-normal text-muted-foreground">{rota.hora_inicio.slice(0, 5)}–{rota.hora_fim?.slice(0, 5) ?? ""}</span>}
           <Badge variant={COR_ESTADO_ROTA[rota.estado] ?? "outline"}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</Badge>
           <select
-            className="ml-auto h-8 rounded-md border bg-background px-2 text-xs"
+            className="h-8 max-w-full rounded-md border bg-background px-2 text-xs"
             value={rota.estado}
             disabled={mudarEstado.isPending || proximosEstados.length === 0}
             onChange={(e) => mudarEstado.mutate(e.target.value)}
@@ -443,8 +495,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Reconciliação */}
-        <div className="flex flex-wrap items-center gap-3 rounded-md border bg-secondary/50 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-secondary/50 px-3 py-3 text-sm">
           <span>Previstos: <strong>{rota.passageiros_previstos ?? "—"}</strong></span>
           <span>Manifesto: <strong>{reconciliacao?.total ?? 0}</strong></span>
           <span>Embarcados: <strong>{reconciliacao?.embarcados ?? 0}</strong></span>
@@ -462,44 +513,25 @@ function RotaCard({ rota }: { rota: RotaRow }) {
           </Button>
         </div>
 
-        {/* Horas reais / histórico */}
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Planeado: {rota.hora_inicio?.slice(0, 5) ?? "—"} → {rota.hora_fim?.slice(0, 5) ?? "—"}</span>
           <span>Real: {rota.hora_partida_real ? new Date(rota.hora_partida_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"} → {rota.hora_chegada_real ? new Date(rota.hora_chegada_real).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
         </div>
 
-        <MapaVeiculos
-          paragens={paragens}
-          tracado
-          altura={260}
-          onCliqueMapa={(latClique, lngClique) => {
-            if (!nome) {
-              toast.error("Escreve primeiro o nome da paragem, depois clica no mapa.");
-              return;
-            }
-            setLat(String(latClique));
-            setLng(String(lngClique));
-          }}
-        />
-        <p className="text-xs text-muted-foreground">
-          Escreve o nome da paragem em baixo e depois clica no mapa para definir a localização.
-        </p>
-        <ol className="space-y-1">
-          {paragens.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-md border px-3 py-2 text-sm">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{p.ordem}</span>
-              <span className="flex-1">{p.nome}</span>
-              {p.hora_prevista && <span className="text-muted-foreground">{p.hora_prevista.slice(0, 5)}</span>}
-            </li>
-          ))}
-          {!paragens.length && <p className="text-sm text-muted-foreground">Sem paragens.</p>}
-        </ol>
-        <div className="grid gap-2 md:grid-cols-5">
-          <Input placeholder="Nome da paragem" value={nome} onChange={(e) => setNome(e.target.value)} />
-          <Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-          <Input placeholder="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} />
-          <Input placeholder="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} />
-          <Button variant="outline" disabled={!nome || addParagem.isPending} onClick={() => addParagem.mutate()}>Adicionar paragem</Button>
+        <div>
+          <p className="mb-2 text-sm font-semibold">Percurso</p>
+          <ol className="grid gap-2 sm:grid-cols-3">
+            {paragens.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 rounded-lg border bg-card/80 px-3 py-3 text-sm">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{p.ordem}</span>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{p.nome}</p>
+                  {p.hora_prevista && <p className="text-xs text-muted-foreground">{p.hora_prevista.slice(0, 5)}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+          {!paragens.length && <p className="text-sm text-muted-foreground">Sem paragens definidas.</p>}
         </div>
       </CardContent>
     </Card>
