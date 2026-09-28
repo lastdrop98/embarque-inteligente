@@ -16,7 +16,7 @@ import MapaVeiculos, { type PosVeiculo } from "@/components/MapaVeiculos";
 export const Route = createFileRoute("/_authenticated/motorista")({
   head: () => ({
     meta: [
-      { title: "Ecrã do Motorista — Rotas & Embarque QR" },
+      { title: "Ecrã do Motorista — PickApp Mobility" },
       { name: "description", content: "Rota paragem a paragem e validação de embarques por QR Code." },
       { property: "og:title", content: "Ecrã do Motorista" },
       { property: "og:description", content: "Rota paragem a paragem e validação de embarques por QR Code." },
