@@ -28,13 +28,15 @@ type Papel =
   | "admin"
   | "operador"
   | "motorista"
-  | "passageiro";
+  | "passageiro"
+  | "responsavel_grupo";
 
 const PAPEIS_VALIDOS: Papel[] = [
   "admin",
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTAS_POR_PAPEL: Record<Papel, string> = {
@@ -42,6 +44,7 @@ const ROTAS_POR_PAPEL: Record<Papel, string> = {
   operador: "/operador",
   motorista: "/motorista",
   passageiro: "/passageiro",
+  responsavel_grupo: "/passageiro",
 };
 
 export const Route = createFileRoute("/auth")({
@@ -411,18 +414,16 @@ function AuthPage() {
           to="/"
           className="mb-6 block text-center text-sm text-muted-foreground hover:text-foreground"
         >
-          ← Rotas &amp; Embarque QR
+          ← PickApp Mobility
         </Link>
 
         <Card className="shadow-lg">
 
           <CardHeader>
-            <CardTitle>
-              Acesso à plataforma
-            </CardTitle>
+            <CardTitle>Acesso ao PickApp Mobility</CardTitle>
 
             <CardDescription>
-              Operadores, motoristas e passageiros.
+              Operadores, motoristas, passageiros e responsáveis de grupo.
             </CardDescription>
           </CardHeader>
 
