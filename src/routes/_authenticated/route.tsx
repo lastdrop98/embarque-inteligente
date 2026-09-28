@@ -446,7 +446,7 @@ function Layout() {
     <div className="relative min-h-screen overflow-x-hidden bg-secondary">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-fixed opacity-[0.13]"
+        className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.13]"
         style={{
           backgroundImage:
             "url(https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1800&q=80)",
