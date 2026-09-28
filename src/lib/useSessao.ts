@@ -5,7 +5,8 @@ export type Papel =
   | "admin"
   | "operador"
   | "motorista"
-  | "passageiro";
+  | "passageiro"
+  | "responsavel_grupo";
 
 export type Sessao = {
   user: NonNullable<
@@ -26,6 +27,7 @@ const PAPEIS_VALIDOS: Papel[] = [
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 export function useSessao() {
