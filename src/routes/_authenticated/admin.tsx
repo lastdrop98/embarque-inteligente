@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -64,6 +64,7 @@ const PAPEIS: Papel[] = [
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const ROTULO_PAPEL: Record<Papel, string> = {
@@ -71,6 +72,7 @@ const ROTULO_PAPEL: Record<Papel, string> = {
   operador: "Operador",
   motorista: "Motorista",
   passageiro: "Passageiro",
+  responsavel_grupo: "Resp. Grupo",
 };
 
 type PerfilRow = {
@@ -85,6 +87,131 @@ type PapelRow = {
   user_id: string;
   role: Papel;
 };
+
+function PontosPredefinidos() {
+  const qc = useQueryClient();
+  const [nome, setNome] = useState("");
+  const [editando, setEditando] = useState<string | null>(null);
+
+  const { data: pontos = [], isLoading } = useQuery({
+    queryKey: ["admin-pontos-predefinidos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pontos_predefinidos")
+        .select("id, nome, activo")
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const guardar = useMutation({
+    mutationFn: async () => {
+      const valor = nome.trim();
+      if (!valor) throw new Error("Introduz o nome do ponto.");
+      if (editando) {
+        const { error } = await supabase
+          .from("pontos_predefinidos")
+          .update({ nome: valor })
+          .eq("id", editando);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("pontos_predefinidos")
+          .insert({ nome: valor, activo: true });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editando ? "Ponto actualizado" : "Ponto criado");
+      setNome("");
+      setEditando(null);
+      qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const alternar = useMutation({
+    mutationFn: async ({ id, activo }: { id: string; activo: boolean }) => {
+      const { error } = await supabase
+        .from("pontos_predefinidos")
+        .update({ activo: !activo })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remover = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("pontos_predefinidos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Ponto removido");
+      qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Pontos predefinidos</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Estes são os únicos pontos que o operador poderá usar ao criar novas rotas.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-sm"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex.: Avenida Julius Nyerere"
+          />
+          <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>
+            {editando ? "Guardar alterações" : "Adicionar ponto"}
+          </Button>
+          {editando && (
+            <Button variant="ghost" onClick={() => { setEditando(null); setNome(""); }}>
+              Cancelar
+            </Button>
+          )}
+        </div>
+
+        <div className="grid gap-2">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">A carregar pontos...</p>
+          ) : pontos.length ? (
+            pontos.map((ponto) => (
+              <div key={ponto.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card/80 p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{ponto.nome}</p>
+                  <p className="text-xs text-muted-foreground">{ponto.activo ? "Activo" : "Inactivo"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setEditando(ponto.id); setNome(ponto.nome); }}>
+                    Editar
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => alternar.mutate({ id: ponto.id, activo: ponto.activo })}>
+                    {ponto.activo ? "Desactivar" : "Activar"}
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => remover.mutate(ponto.id)}>
+                    Remover
+                  </Button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">Ainda não existem pontos predefinidos.</p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function useInvalidateAdmin() {
   const queryClient = useQueryClient();
@@ -134,6 +261,8 @@ function AdminPage() {
       </div>
 
       <Kpis />
+
+      <PontosPredefinidos />
 
       <MapaGeral />
 
