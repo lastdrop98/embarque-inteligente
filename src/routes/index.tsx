@@ -28,7 +28,7 @@ function Index() {
         style={{ backgroundImage: "var(--gradient-navy)" }}
       >
         <div className="mx-auto max-w-3xl text-center">
-          <img src="/pickapp-logo.svg" alt="PickApp Mobility" className="mx-auto h-12 w-auto max-w-[240px] brightness-0 invert" />
+          <img src="/pickapp-logo-light.svg" alt="PickApp Mobility" className="mx-auto h-12 w-auto max-w-[240px]" />
           <p className="mt-5 text-sm uppercase tracking-[0.2em] opacity-70">Smart Mobility Operations</p>
           <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">PickApp Mobility</h1>
           <p className="mt-5 text-lg opacity-85">
