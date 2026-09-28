@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" role="img" aria-labelledby="title desc">
+  <title id="title">PickApp Mobility</title>
+  <desc id="desc">Logótipo PickApp Mobility com símbolo de mobilidade e localização.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#147BFF"/>
+      <stop offset="1" stop-color="#00C853"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(6 6)">
+    <path d="M42 2C21.6 2 5 18.1 5 38c0 27.2 37 45 37 45s37-17.8 37-45C79 18.1 62.4 2 42 2Z" fill="url(#g)"/>
+    <circle cx="42" cy="37" r="14" fill="#fff" opacity=".98"/>
+    <path d="M34 37h18M45 29l8 8-8 8" fill="none" stroke="#147BFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18 69h48" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".9"/>
+  </g>
+  <g transform="translate(100 0)">
+    <text x="0" y="47" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="800" letter-spacing="-1.2" fill="#102A43">PickApp</text>
+    <text x="190" y="47" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="38" font-weight="500" letter-spacing="-1.2" fill="#147BFF">Mobility</text>
+    <text x="2" y="73" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="600" letter-spacing="2.8" fill="#00A94F">SMART MOBILITY OPERATIONS</text>
+  </g>
+</svg>
