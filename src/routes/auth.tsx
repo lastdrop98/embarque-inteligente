@@ -410,11 +410,8 @@ function AuthPage() {
     <main className="flex min-h-screen items-center justify-center bg-secondary px-4 py-12">
       <div className="w-full max-w-md">
 
-        <Link
-          to="/"
-          className="mb-6 block text-center text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← PickApp Mobility
+        <Link to="/" className="mb-6 block text-center">
+          <img src="/pickapp-logo.svg" alt="PickApp Mobility" className="mx-auto h-12 w-auto max-w-[240px]" />
         </Link>
 
         <Card className="shadow-lg">
