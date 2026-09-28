@@ -461,7 +461,7 @@ function Layout() {
             to="/"
             className="font-semibold tracking-tight"
           >
-            <img src="/pickapp-logo.svg" alt="PickApp Mobility" className="h-8 w-auto max-w-[180px]" />
+            <img src="/pickapp-logo-light.svg" alt="PickApp Mobility" className="h-8 w-auto max-w-[180px]" />
           </Link>
 
           <nav className="flex flex-1 flex-wrap gap-1 text-sm">
