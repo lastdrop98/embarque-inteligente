@@ -548,6 +548,7 @@ function Layout() {
 
       </main>
 
+      </div>
     </div>
   );
 }
