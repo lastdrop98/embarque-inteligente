@@ -50,7 +50,7 @@ const ROTAS_POR_PAPEL: Record<Papel, string> = {
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Rotas & Embarque QR" },
+      { title: "Entrar — PickApp Mobility" },
       {
         name: "description",
         content:
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/auth")({
       },
       {
         property: "og:title",
-        content: "Entrar — Rotas & Embarque QR",
+        content: "Entrar — PickApp Mobility",
       },
       {
         property: "og:description",
