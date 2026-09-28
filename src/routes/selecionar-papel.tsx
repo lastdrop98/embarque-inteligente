@@ -18,13 +18,15 @@ type Papel =
   | "admin"
   | "operador"
   | "motorista"
-  | "passageiro";
+  | "passageiro"
+  | "responsavel_grupo";
 
 const PAPEIS_VALIDOS: Papel[] = [
   "admin",
   "operador",
   "motorista",
   "passageiro",
+  "responsavel_grupo",
 ];
 
 const INFORMACOES_PAPEL: Record<
@@ -65,6 +67,14 @@ const INFORMACOES_PAPEL: Record<
     descricao:
       "Acesso às viagens, bilhetes, QR Code, histórico e acompanhamento das suas deslocações.",
     icone: "👤",
+    rota: "/passageiro",
+  },
+
+  responsavel_grupo: {
+    titulo: "Responsável de Grupo",
+    descricao:
+      "Acesso às viagens e acompanhamento dos passageiros associados ao grupo.",
+    icone: "👥",
     rota: "/passageiro",
   },
 };
