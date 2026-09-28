@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -16,7 +13,10 @@ type Passageiro = {
   categoria: Database["public"]["Enums"]["categoria_passageiro"];
 };
 
-const ESTADOS_PEDIDO: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const ESTADOS_PEDIDO: Record<
+  string,
+  { label: string; variant: "default" | "secondary" | "destructive" | "outline" }
+> = {
   rascunho: { label: "Rascunho", variant: "outline" },
   submetido: { label: "Submetido", variant: "secondary" },
   em_analise: { label: "Em análise", variant: "default" },
@@ -24,21 +24,39 @@ const ESTADOS_PEDIDO: Record<string, { label: string; variant: "default" | "seco
   alocado: { label: "Alocado", variant: "default" },
   agendado: { label: "Agendado", variant: "default" },
   rejeitado: { label: "Rejeitado", variant: "destructive" },
+  cancelado: { label: "Cancelado", variant: "outline" },
 };
 
-export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passageiro; userId: string }) {
+const ESTADOS_ACTIVOS = ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"];
+
+export function PassageiroPedidos({
+  passageiro,
+  userId,
+}: {
+  passageiro: Passageiro;
+  userId: string;
+}) {
   const qc = useQueryClient();
   const hoje = new Date().toISOString().slice(0, 10);
-  const [titulo, setTitulo] = useState("");
-  const [dataViagem, setDataViagem] = useState(hoje);
-  const [hora, setHora] = useState("");
-  const [origem, setOrigem] = useState("");
-  const [destino, setDestino] = useState("");
-  const [numPassageiros, setNumPassageiros] = useState(1);
-  const [tipoViatura, setTipoViatura] = useState("");
-  const [observacoes, setObservacoes] = useState("");
 
-  const { data: pedidos } = useQuery({
+  const [dataViagem, setDataViagem] = useState(hoje);
+  const [origemId, setOrigemId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
+
+  const { data: pontos = [] } = useQuery({
+    queryKey: ["pontos-predefinidos-passageiro"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pontos_predefinidos")
+        .select("id, nome")
+        .eq("activo", true)
+        .order("nome");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: pedidos = [], isLoading: aCarregarPedidos } = useQuery({
     queryKey: ["meus-pedidos-transporte", passageiro.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -47,23 +65,33 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         .eq("passageiro_id", passageiro.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
+  const pedidoActivo = pedidos.find((p) => ESTADOS_ACTIVOS.includes(p.estado));
+
   const criarPedido = useMutation({
     mutationFn: async () => {
+      if (pedidoActivo) throw new Error("Já existe um pedido activo. Cancele-o ou aguarde a conclusão antes de criar outro.");
+      if (!origemId || !destinoId) throw new Error("Seleccione a origem e o destino.");
+      if (origemId === destinoId) throw new Error("A origem e o destino devem ser diferentes.");
+
+      const origem = pontos.find((p) => p.id === origemId);
+      const destino = pontos.find((p) => p.id === destinoId);
+      if (!origem || !destino) throw new Error("Os pontos seleccionados já não estão disponíveis.");
+
       const { data, error } = await supabase
         .from("pedidos_transporte")
         .insert({
-          titulo: titulo.trim() || `Pedido de transporte — ${dataViagem}`,
+          titulo: `Pedido de transporte — ${dataViagem}`,
           data_viagem: dataViagem,
-          hora: hora || null,
-          origem: origem.trim(),
-          destino: destino.trim(),
-          num_passageiros: numPassageiros,
-          tipo_viatura: tipoViatura.trim() || null,
-          observacoes: observacoes.trim() || null,
+          hora: null,
+          origem: origem.nome,
+          destino: destino.nome,
+          num_passageiros: 1,
+          tipo_viatura: null,
+          observacoes: null,
           categoria: passageiro.categoria,
           passageiro_id: passageiro.id,
           criado_por: userId,
@@ -71,9 +99,9 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         })
         .select("id")
         .single();
+
       if (error) throw error;
 
-      // A notificação não deve impedir a criação do pedido.
       try {
         const { error: notifError } = await supabase.rpc("notificar_novo_pedido", {
           _pedido_id: data.id,
@@ -85,13 +113,32 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     },
     onSuccess: () => {
       toast.success("Pedido de transporte enviado");
-      setTitulo("");
-      setHora("");
-      setOrigem("");
-      setDestino("");
-      setNumPassageiros(1);
-      setTipoViatura("");
-      setObservacoes("");
+      setOrigemId("");
+      setDestinoId("");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const cancelar = useMutation({
+    mutationFn: async (pedidoId: string) => {
+      const { error } = await supabase.rpc("cancelar_pedido", { _pedido_id: pedidoId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pedido cancelado");
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const eliminar = useMutation({
+    mutationFn: async (pedidoId: string) => {
+      const { error } = await supabase.rpc("eliminar_pedido", { _pedido_id: pedidoId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pedido eliminado");
       qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -99,93 +146,143 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
 
   const podeEnviar =
     dataViagem >= hoje &&
-    !!origem.trim() &&
-    !!destino.trim() &&
-    numPassageiros >= 1 &&
+    !!origemId &&
+    !!destinoId &&
+    origemId !== destinoId &&
+    !pedidoActivo &&
     !criarPedido.isPending;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
       <Card>
         <CardHeader>
           <CardTitle>Solicitar transporte</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Envie um pedido de transporte. O operador fará a análise e, quando aplicável, associará a uma rota.
+            Escolha a data, o ponto de origem e o destino. Só pode existir um pedido activo de cada vez.
           </p>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Título (opcional)</Label>
-            <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Ex.: Transporte para o evento" />
-          </div>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Data da viagem</Label>
-            <Input type="date" min={hoje} value={dataViagem} onChange={(e) => setDataViagem(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Hora (opcional)</Label>
-            <Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Origem</Label>
-            <Input value={origem} onChange={(e) => setOrigem(e.target.value)} placeholder="Local de partida" />
-          </div>
-          <div className="space-y-2">
-            <Label>Destino</Label>
-            <Input value={destino} onChange={(e) => setDestino(e.target.value)} placeholder="Local de chegada" />
-          </div>
-          <div className="space-y-2">
-            <Label>Número de passageiros</Label>
-            <Input
-              type="number"
-              min={1}
-              value={numPassageiros}
-              onChange={(e) => setNumPassageiros(Math.max(1, Number(e.target.value) || 1))}
+            <input
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              type="date"
+              min={hoje}
+              value={dataViagem}
+              onChange={(e) => setDataViagem(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Tipo de viatura (opcional)</Label>
-            <Input value={tipoViatura} onChange={(e) => setTipoViatura(e.target.value)} placeholder="Ex.: Minibus" />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Ponto de origem</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={origemId}
+                onChange={(e) => setOrigemId(e.target.value)}
+                disabled={!pontos.length || !!pedidoActivo}
+              >
+                <option value="">Seleccione...</option>
+                {pontos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Destino</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={destinoId}
+                onChange={(e) => setDestinoId(e.target.value)}
+                disabled={!pontos.length || !!pedidoActivo}
+              >
+                <option value="">Seleccione...</option>
+                {pontos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nome}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Observações</Label>
-            <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Informações adicionais para o operador" />
-          </div>
-          <div className="md:col-span-2">
-            <Button disabled={!podeEnviar} onClick={() => criarPedido.mutate()}>
-              {criarPedido.isPending ? "A enviar..." : "Enviar pedido"}
-            </Button>
-          </div>
+
+          <Button disabled={!podeEnviar} onClick={() => criarPedido.mutate()}>
+            {criarPedido.isPending ? "A enviar..." : "Enviar pedido"}
+          </Button>
+
+          {pedidoActivo && (
+            <p className="text-sm font-medium text-amber-700">
+              Já existe um pedido activo. Pode cancelá-lo abaixo para fazer uma nova solicitação.
+            </p>
+          )}
+
+          {!pontos.length && (
+            <p className="text-sm text-destructive">
+              Ainda não existem pontos predefinidos activos. O administrador precisa de os configurar.
+            </p>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Os meus pedidos</CardTitle>
-          <p className="text-sm text-muted-foreground">Acompanhe aqui o estado de cada solicitação.</p>
+          <p className="text-sm text-muted-foreground">
+            Histórico e estado das solicitações.
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {pedidos?.length ? pedidos.map((pedido) => {
-            const estado = ESTADOS_PEDIDO[pedido.estado] ?? { label: pedido.estado, variant: "outline" as const };
-            return (
-              <div key={pedido.id} className="rounded-lg border p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{pedido.titulo}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {pedido.data_viagem}{pedido.hora ? ` · ${pedido.hora.slice(0, 5)}` : ""}
-                    </p>
+          {aCarregarPedidos ? (
+            <p className="text-sm text-muted-foreground">A carregar pedidos...</p>
+          ) : pedidos.length ? (
+            pedidos.map((pedido) => {
+              const estado = ESTADOS_PEDIDO[pedido.estado] ?? {
+                label: pedido.estado,
+                variant: "outline" as const,
+              };
+              const podeCancelar = ESTADOS_ACTIVOS.includes(pedido.estado);
+              const podeEliminar = ["rascunho", "submetido", "cancelado", "rejeitado"].includes(pedido.estado);
+              return (
+                <div key={pedido.id} className="rounded-lg border bg-card/80 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">{pedido.titulo}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {pedido.data_viagem}
+                      </p>
+                    </div>
+                    <Badge variant={estado.variant}>{estado.label}</Badge>
                   </div>
-                  <Badge variant={estado.variant}>{estado.label}</Badge>
+                  <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {podeCancelar && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={cancelar.isPending}
+                        onClick={() => cancelar.mutate(pedido.id)}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                    {podeEliminar && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={eliminar.isPending}
+                        onClick={() => eliminar.mutate(pedido.id)}
+                      >
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
-                <p className="text-xs text-muted-foreground">{pedido.num_passageiros} passageiro(s){pedido.tipo_viatura ? ` · ${pedido.tipo_viatura}` : ""}</p>
-              </div>
-            );
-          }) : (
+              );
+            })
+          ) : (
             <div className="rounded-lg border border-dashed p-6 text-center">
               <p className="font-medium">Ainda não tem pedidos</p>
-              <p className="mt-1 text-sm text-muted-foreground">Preencha o formulário para solicitar o seu primeiro transporte.</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Faça uma solicitação para começar.
+              </p>
             </div>
           )}
         </CardContent>
