@@ -4,7 +4,6 @@ import {
   ArrowRight,
   BusFront,
   CheckCircle2,
-  Navigation,
   QrCode,
   Route as RouteIcon,
   ShieldCheck,
