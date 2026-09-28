@@ -46,7 +46,7 @@ export const Route = createFileRoute(
     meta: [
       {
         title:
-          "Administração — Rotas & Embarque QR",
+          "Administração — PickApp Mobility",
       },
       {
         name: "description",
