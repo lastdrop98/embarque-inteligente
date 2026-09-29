@@ -1,14 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
   <title id="title">PickApp Mobility</title>
-  <desc id="desc">Símbolo minimalista de mobilidade inspirado num jato de papel, sem círculo.</desc>
-  <defs>
-    <linearGradient id="plane" x1="8" y1="10" x2="55" y2="54" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A84FF"/>
-      <stop offset="0.72" stop-color="#147BFF"/>
-      <stop offset="1" stop-color="#00C853"/>
-    </linearGradient>
-  </defs>
-  <path d="M7.2 29.7 55.4 7.9c1.8-.8 3.5.9 2.7 2.7L36.3 58.8c-.8 1.8-3.5 1.6-4-.3l-5.7-19.1L7.4 33.8c-1.9-.7-2-3.3-.2-4.1Z" fill="url(#plane)"/>
-  <path d="m26.6 39.4 28.1-28.2-23.8 22.2  -4.3 6Z" fill="#fff" opacity=".96"/>
-  <path d="M27.2 39.1 55 11.2" fill="none" stroke="#DDEEFF" stroke-width="1.5" stroke-linecap="round" opacity=".9"/>
+  <desc id="desc">Símbolo minimalista de mobilidade inspirado num jato de papel, com interior transparente e traço azul.</desc>
+  <g fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.2 29.7 55.4 7.9c1.8-.8 3.5.9 2.7 2.7L36.3 58.8c-.8 1.8-3.5 1.6-4-.3l-5.7-19.1L7.4 33.8c-1.9-.7-2-3.3-.2-4.1Z" stroke-width="2.7"/>
+    <path d="M26.6 39.4 54.7 11.2" stroke-width="2.2"/>
+  </g>
 </svg>
