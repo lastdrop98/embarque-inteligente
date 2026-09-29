@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
   <title id="title">PickApp Mobility</title>
-  <desc id="desc">Símbolo minimalista de mobilidade inspirado num jato de papel, com interior transparente e traço azul.</desc>
+  <desc id="desc">Marcador de localização minimalista com interior transparente e contorno azul.</desc>
   <g fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7.2 29.7 55.4 7.9c1.8-.8 3.5.9 2.7 2.7L36.3 58.8c-.8 1.8-3.5 1.6-4-.3l-5.7-19.1L7.4 33.8c-1.9-.7-2-3.3-.2-4.1Z" stroke-width="2.7"/>
-    <path d="M26.6 39.4 54.7 11.2" stroke-width="2.2"/>
+    <path d="M32 3C18.2 3 7 14.2 7 28c0 17.7 25 33 25 33s25-15.3 25-33C57 14.2 45.8 3 32 3Z" stroke-width="3.2"/>
+    <circle cx="32" cy="28" r="8" stroke-width="3"/>
   </g>
 </svg>
