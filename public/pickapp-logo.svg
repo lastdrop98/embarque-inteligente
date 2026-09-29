@@ -1,18 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 92" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 80" role="img" aria-labelledby="title desc">
   <title id="title">PickApp Mobility</title>
-  <desc id="desc">Logótipo PickApp Mobility com símbolo de jato de papel em traço azul e wordmark moderno.</desc>
+  <desc id="desc">Logótipo PickApp Mobility com marcador de localização azul de interior transparente.</desc>
 
-  <!-- Símbolo: interior totalmente transparente; apenas o contorno azul -->
-  <g transform="translate(5 9)" fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5.2 30.1 60.4 5.9c2.1-.9 4 1 3.1 3.1L38.4 61.8c-.9 2.1-4 1.8-4.6-.3l-6.5-21.8L5.4 34.7c-2.1-.8-2.2-3.8-.2-4.6Z" stroke-width="2.7"/>
-    <path d="M27.3 39.7 59.6 7.5" stroke-width="2.1"/>
-    <path d="M27.9 39.2 59.6 7.5" stroke="#0A84FF" stroke-width="1.1" opacity=".75"/>
+  <!-- Marcador de localização: interior transparente, apenas contorno azul -->
+  <g transform="translate(6 6)" fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M34 2.5C20.2 2.5 9 13.7 9 27.5c0 17.7 25 38 25 38s25-20.3 25-38C59 13.7 47.8 2.5 34 2.5Z" stroke-width="3.2"/>
+    <circle cx="34" cy="27.5" r="8.2" stroke-width="3"/>
   </g>
 
-  <!-- Wordmark: tipografia mais limpa, moderna e leve -->
-  <g transform="translate(88 0)">
-    <text x="0" y="43" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" font-size="37" font-weight="700" letter-spacing="-1.35" fill="#102A43">PickApp</text>
-    <text x="184" y="43" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" font-size="37" font-weight="400" letter-spacing="-1.35" fill="#147BFF">Mobility</text>
-    <text x="2" y="67" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="600" letter-spacing="2.4" fill="#147BFF">SMART MOBILITY OPERATIONS</text>
-  </g>
+  <!-- Wordmark compacto, sem tagline -->
+  <text x="82" y="48"
+    font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif"
+    font-size="37" font-weight="650" letter-spacing="-0.8" fill="#102A43">PickApp</text>
+  <text x="258" y="48"
+    font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif"
+    font-size="37" font-weight="420" letter-spacing="-0.8" fill="#147BFF">Mobility</text>
 </svg>
