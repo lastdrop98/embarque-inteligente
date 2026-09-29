@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/pickapp-icon.svg?v=20260929-2", type: "image/svg+xml" },
+      { rel: "icon", href: "/pickapp-icon.svg?v=20260929-3", type: "image/svg+xml" },
     ],
   }),
   shellComponent: RootShell,
