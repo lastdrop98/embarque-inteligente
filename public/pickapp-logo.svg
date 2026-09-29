@@ -1,21 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 92" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 92" role="img" aria-labelledby="title desc">
   <title id="title">PickApp Mobility</title>
-  <desc id="desc">Logótipo PickApp Mobility com símbolo minimalista de jato de papel e wordmark premium.</desc>
-  <defs>
-    <linearGradient id="plane" x1="7" y1="8" x2="62" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A84FF"/>
-      <stop offset="0.72" stop-color="#147BFF"/>
-      <stop offset="1" stop-color="#00C853"/>
-    </linearGradient>
-  </defs>
-  <g transform="translate(4 7)">
-    <path d="M5.2 30.1 60.4 5.9c2.1-.9 4 1 3.1 3.1L38.4 61.8c-.9 2.1-4 1.8-4.6-.3l-6.5-21.8L5.4 34.7c-2.1-.8-2.2-3.8-.2-4.6Z" fill="url(#plane)"/>
-    <path d="m27.3 39.7 32.2-32.2-27.4 25.5-4.8 6.7Z" fill="#fff" opacity=".97"/>
-    <path d="M28 39.5 59.8 7.7" fill="none" stroke="#DDEEFF" stroke-width="1.6" stroke-linecap="round" opacity=".9"/>
+  <desc id="desc">Logótipo PickApp Mobility com símbolo de jato de papel em traço azul e wordmark moderno.</desc>
+
+  <!-- Símbolo: interior totalmente transparente; apenas o contorno azul -->
+  <g transform="translate(5 9)" fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5.2 30.1 60.4 5.9c2.1-.9 4 1 3.1 3.1L38.4 61.8c-.9 2.1-4 1.8-4.6-.3l-6.5-21.8L5.4 34.7c-2.1-.8-2.2-3.8-.2-4.6Z" stroke-width="2.7"/>
+    <path d="M27.3 39.7 59.6 7.5" stroke-width="2.1"/>
+    <path d="M27.9 39.2 59.6 7.5" stroke="#0A84FF" stroke-width="1.1" opacity=".75"/>
   </g>
-  <g transform="translate(86 0)">
-    <text x="0" y="43" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Arial,sans-serif" font-size="38" font-weight="750" letter-spacing="-1.7" fill="#102A43">PickApp</text>
-    <text x="181" y="43" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Arial,sans-serif" font-size="38" font-weight="500" letter-spacing="-1.7" fill="#147BFF">Mobility</text>
-    <text x="2" y="67" font-family="-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Arial,sans-serif" font-size="10.5" font-weight="650" letter-spacing="2.6" fill="#00A94F">SMART MOBILITY OPERATIONS</text>
+
+  <!-- Wordmark: tipografia mais limpa, moderna e leve -->
+  <g transform="translate(88 0)">
+    <text x="0" y="43" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" font-size="37" font-weight="700" letter-spacing="-1.35" fill="#102A43">PickApp</text>
+    <text x="184" y="43" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif" font-size="37" font-weight="400" letter-spacing="-1.35" fill="#147BFF">Mobility</text>
+    <text x="2" y="67" font-family="Inter,-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif" font-size="10.5" font-weight="600" letter-spacing="2.4" fill="#147BFF">SMART MOBILITY OPERATIONS</text>
   </g>
 </svg>
