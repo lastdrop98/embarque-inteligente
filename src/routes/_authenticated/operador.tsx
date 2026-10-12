@@ -306,16 +306,18 @@ function Rotas() {
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [previstos, setPrevistos] = useState("");
+  const [dataViagem, setDataViagem] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date()));
 
   const criar = useMutation({
     mutationFn: async () => {
+      if (!dataViagem) throw new Error("Defina a data da viagem.");
       if (!partidaId || !chegadaId) throw new Error("Escolha o ponto de partida e o ponto de chegada.");
       if (partidaId === chegadaId) throw new Error("A partida e a chegada devem ser diferentes.");
       if (paragemId && (paragemId === partidaId || paragemId === chegadaId)) {
         throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
       }
 
-      const { error } = await supabase.rpc("criar_rota_operacional", {
+      const { data: rotaCriada, error } = await supabase.rpc("criar_rota_operacional", {
         _nome: nome.trim() || null,
         _veiculo_id: veiculoId || null,
         _motorista_id: motoristaId || null,
@@ -327,6 +329,9 @@ function Rotas() {
         _passageiros_previstos: previstos ? Number(previstos) : null,
       });
       if (error) throw error;
+      if (!rotaCriada) throw new Error("A rota foi criada sem devolver o identificador.");
+      const { error: erroData } = await supabase.from("rotas").update({ data_viagem: dataViagem }).eq("id", rotaCriada);
+      if (erroData) throw erroData;
     },
     onSuccess: () => {
       toast.success("Rota criada");
@@ -352,6 +357,10 @@ function Rotas() {
           </p>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <Label>Data da viagem</Label>
+            <Input type="date" min={new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date())} value={dataViagem} onChange={(e) => setDataViagem(e.target.value)} required />
+          </div>
           <div className="space-y-2">
             <Label>Ponto de partida</Label>
             <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={partidaId} onChange={(e) => setPartidaId(e.target.value)}>
@@ -436,6 +445,7 @@ type Paragem = { id: string; nome: string; ordem: number; hora_prevista: string 
 type RotaRow = {
   id: string;
   nome: string;
+  data_viagem: string | null;
   hora_inicio: string | null;
   hora_fim: string | null;
   hora_partida_real: string | null;
@@ -469,6 +479,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const [inicioEdicao, setInicioEdicao] = useState(rota.hora_inicio?.slice(0, 5) ?? "");
   const [fimEdicao, setFimEdicao] = useState(rota.hora_fim?.slice(0, 5) ?? "");
   const [previstosEdicao, setPrevistosEdicao] = useState(String(rota.passageiros_previstos ?? ""));
+  const [dataEdicao, setDataEdicao] = useState(rota.data_viagem ?? "");
 
   const editarRota = useMutation({
     mutationFn: async () => {
@@ -477,6 +488,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         hora_inicio: inicioEdicao || null,
         hora_fim: fimEdicao || null,
         passageiros_previstos: previstosEdicao ? Number(previstosEdicao) : null,
+        data_viagem: dataEdicao || null,
       }).eq("id", rota.id);
       if (error) throw error;
     },
@@ -551,6 +563,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
               <Input className="h-8 w-52" value={nomeEdicao} onChange={(e) => setNomeEdicao(e.target.value)} />
               <Input className="h-8 w-28" type="time" value={inicioEdicao} onChange={(e) => setInicioEdicao(e.target.value)} />
               <Input className="h-8 w-28" type="time" value={fimEdicao} onChange={(e) => setFimEdicao(e.target.value)} />
+              <Input className="h-8 w-36" type="date" value={dataEdicao} onChange={(e) => setDataEdicao(e.target.value)} aria-label="Data da viagem" />
               <Input className="h-8 w-28" type="number" min={0} placeholder="Previstos" value={previstosEdicao} onChange={(e) => setPrevistosEdicao(e.target.value)} />
               <Button size="sm" disabled={!nomeEdicao.trim() || editarRota.isPending} onClick={() => editarRota.mutate()}><Save className="mr-1 h-4 w-4" />Guardar</Button>
               <Button size="sm" variant="ghost" disabled={editarRota.isPending} onClick={() => { setAEditar(false); setNomeEdicao(rota.nome); }}><X className="mr-1 h-4 w-4" />Cancelar</Button>
@@ -560,6 +573,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
               {rota.nome}
           {rota.veiculos && <Badge variant="secondary">{rota.veiculos.nome}</Badge>}
           {rota.hora_inicio && <span className="text-xs font-normal text-muted-foreground">{rota.hora_inicio.slice(0, 5)}–{rota.hora_fim?.slice(0, 5) ?? ""}</span>}
+              {rota.data_viagem && <span className="text-xs font-normal text-muted-foreground">{rota.data_viagem}</span>}
               <Badge variant={COR_ESTADO_ROTA[rota.estado] ?? "outline"}>{ESTADOS_ROTA[rota.estado] ?? rota.estado}</Badge>
               <Button size="sm" variant="outline" className="h-8" onClick={() => setAEditar(true)} disabled={aEditar}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
               <Button
