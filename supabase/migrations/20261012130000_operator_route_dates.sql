@@ -66,7 +66,7 @@ BEGIN
 
   PERFORM pg_advisory_xact_lock(hashtextextended(_passageiro_id::text, 0));
 
-  SELECT r.id, r.estado, r.data_viagem, r.hora_inicio, r.hora_fim, r.veiculo_id, v.lugares AS capacidade
+  SELECT r.id, r.nome, r.estado, r.data_viagem, r.hora_inicio, r.hora_fim, r.veiculo_id, v.lugares AS capacidade
     INTO _rota
     FROM public.rotas r
     LEFT JOIN public.veiculos v ON v.id = r.veiculo_id
@@ -123,6 +123,13 @@ BEGIN
   INSERT INTO public.viagens_passageiro (rota_id, passageiro_id, paragem_embarque_id, paragem_desembarque_id, estado)
     VALUES (_rota_id, _passageiro_id, _paragem_embarque_id, _paragem_desembarque_id, 'pendente')
     RETURNING id INTO _viagem_id;
+
+  INSERT INTO public.notificacoes (user_id, tipo, mensagem)
+  SELECT DISTINCT pu.user_id, 'reserva',
+    'Nova reserva confirmada: ' || _rota.nome || ' · ' || _origem.nome || ' → ' || _destino.nome || ' · ' || to_char(_rota.data_viagem, 'DD/MM/YYYY')
+  FROM public.papeis_utilizador pu
+  WHERE pu.role IN ('operador', 'admin');
+
   RETURN _viagem_id;
 END;
 $function$;
