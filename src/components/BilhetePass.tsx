@@ -17,7 +17,7 @@ export type DadosBilhete = {
 };
 
 const ESTADO_INFO: Record<string, { rotulo: string; cor: string }> = {
-  pendente: { rotulo: "Pendente", cor: "bg-amber-500 text-white" },
+  pendente: { rotulo: "Confirmado", cor: "bg-amber-500 text-white" },
   a_bordo: { rotulo: "A bordo", cor: "bg-emerald-600 text-white" },
   concluida: { rotulo: "Concluída", cor: "bg-emerald-600 text-white" },
   recusada: { rotulo: "Inválido", cor: "bg-destructive text-destructive-foreground" },
@@ -68,7 +68,12 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             </div>
           )}
         </div>
-                <div className="mx-auto max-w-xs rounded-2xl border bg-muted/40 p-3">
+                {!compacto && ["pendente", "a_bordo"].includes(dados.estado) && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs font-medium text-amber-800 dark:text-amber-300">
+            O embarque fecha 10 minutos antes da partida. Chegue à paragem com antecedência.
+          </div>
+        )}
+        <div className="mx-auto max-w-xs rounded-2xl border bg-muted/40 p-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Código alternativo</p>
           <div className="mt-1 flex items-center justify-center gap-2">
             <span className="font-mono text-xl font-bold tracking-[0.18em] text-foreground">{dados.token}</span>
