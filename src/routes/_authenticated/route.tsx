@@ -18,6 +18,15 @@ import {
 } from "@/lib/useSessao";
 
 import { SinoNotificacoes } from "@/components/SinoNotificacoes";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
+
+const ROTULO_PAPEL: Record<Papel, string> = {
+  admin: "Administrador",
+  operador: "Operador",
+  motorista: "Motorista",
+  passageiro: "Passageiro",
+};
 
 type Rota =
   | "/admin"
@@ -338,6 +347,8 @@ function Layout() {
   const navigate =
     useNavigate();
 
+  const [menuAberto, setMenuAberto] = useState(false);
+
   const queryClient =
     useQueryClient();
 
@@ -441,81 +452,82 @@ function Layout() {
   return (
     <div className="min-h-screen bg-secondary">
 
-      <header className="bg-sidebar text-sidebar-foreground">
-
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-
-          <Link
-            to="/"
-            className="font-semibold tracking-tight"
-          >
+      <header className="sticky top-0 z-40 bg-sidebar text-sidebar-foreground">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
+          <Link to="/" className="truncate font-semibold tracking-tight">
             Rotas &amp; Embarque QR
           </Link>
 
-          <nav className="flex flex-1 flex-wrap gap-1 text-sm">
-
+          <nav className="hidden flex-1 flex-wrap gap-1 text-sm md:flex">
             {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-              >
+              <NavLink key={l.to} to={l.to}>
                 {l.label}
               </NavLink>
             ))}
-
           </nav>
+          <div className="flex-1 md:hidden" />
 
           {papelAtual && (
-            <span className="rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium">
-              {papelAtual === "admin" &&
-                "Administrador"}
-
-              {papelAtual === "operador" &&
-                "Operador"}
-
-              {papelAtual === "motorista" &&
-                "Motorista"}
-
-              {papelAtual === "passageiro" &&
-                "Passageiro"}
+            <span className="hidden rounded-md bg-sidebar-accent px-3 py-1.5 text-xs font-medium sm:inline">
+              {ROTULO_PAPEL[papelAtual]}
             </span>
           )}
 
-          {/* 
-  Só aparece quando a conta possui
-  mais de um papel.
-*/}
-          {data?.papeis &&
-            data.papeis.length > 1 && (
-              <Button
-  size="sm"
-  variant="outline"
-  className="border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
-  onClick={trocarPapel}
->
-  Trocar papel
-</Button>
-            )}
-
-          {data?.user?.id && (
-            <SinoNotificacoes
-              userId={data.user.id}
-            />
+          {data?.papeis && data.papeis.length > 1 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="hidden border-white/30 bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-foreground md:inline-flex"
+              onClick={trocarPapel}
+            >
+              Trocar papel
+            </Button>
           )}
 
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={sair}
-          >
+          {data?.user?.id && <SinoNotificacoes userId={data.user.id} />}
+
+          <Button size="sm" variant="secondary" className="hidden md:inline-flex" onClick={sair}>
             Sair
           </Button>
 
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Abrir menu"
+            className="h-10 w-10 text-sidebar-foreground hover:bg-sidebar-accent md:hidden"
+            onClick={() => setMenuAberto((v) => !v)}
+          >
+            {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
 
+        {menuAberto && (
+          <div className="border-t border-white/10 px-3 pb-3 md:hidden">
+            {papelAtual && (
+              <p className="py-2 text-xs opacity-80">Sessão: {ROTULO_PAPEL[papelAtual]}</p>
+            )}
+            <nav className="flex flex-col gap-1 text-sm" onClick={() => setMenuAberto(false)}>
+              {links.map((l) => (
+                <NavLink key={l.to} to={l.to}>
+                  {l.label}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="mt-3 flex gap-2">
+              {data?.papeis && data.papeis.length > 1 && (
+                <Button size="sm" variant="outline" className="flex-1 border-white/30 bg-sidebar-accent text-sidebar-foreground" onClick={trocarPapel}>
+                  Trocar papel
+                </Button>
+              )}
+              <Button size="sm" variant="secondary" className="flex-1" onClick={sair}>
+                Sair
+              </Button>
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl overflow-x-hidden px-3 py-5 sm:px-4 sm:py-8">
 
         {suspenso ? (
           <div className="mx-auto max-w-md rounded-lg border border-destructive/40 bg-destructive/10 p-6 text-center">
