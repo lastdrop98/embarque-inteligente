@@ -272,6 +272,7 @@ function Rotas() {
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState("");
   const [previstos, setPrevistos] = useState("");
+  const [dataServico, setDataServico] = useState("");
 
   const criar = useMutation({
     mutationFn: async () => {
@@ -281,6 +282,7 @@ function Rotas() {
         motorista_id: motoristaId || null,
         hora_inicio: inicio || null,
         hora_fim: fim || null,
+        data_servico: dataServico || null,
         passageiros_previstos: previstos ? Number(previstos) : null,
       });
       if (error) throw error;
@@ -309,10 +311,14 @@ function Rotas() {
               {motoristas?.map((m) => <option key={m.id} value={m.id}>{m.nome || m.email}</option>)}
             </select>
           </div>
+          <div className="space-y-2"><Label>Data da viagem</Label><Input type="date" value={dataServico} onChange={(e) => setDataServico(e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2"><Label>Início</Label><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
-            <div className="space-y-2"><Label>Fim</Label><Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Partida</Label><Input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} /></div>
+            <div className="space-y-2"><Label>Chegada</Label><Input type="time" value={fim} onChange={(e) => setFim(e.target.value)} /></div>
           </div>
+          <p className="text-xs text-muted-foreground md:col-span-6">
+            Com data, partida e paragens definidas, a rota aparece aos passageiros para reservarem. O embarque fecha 10 minutos antes da partida.
+          </p>
           <div className="space-y-2"><Label>Passageiros previstos</Label><Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} /></div>
           <div className="md:col-span-6">
             <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar rota</Button>
