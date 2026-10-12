@@ -205,11 +205,6 @@ function Conteudo({ userId }: { userId: string }) {
 
       <div>
         <h2 className="mb-3 text-lg font-semibold">Os meus bilhetes activos</h2>
-        {activas.length > 0 && (
-          <p className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-800 dark:text-amber-300">
-            O embarque fecha 10 minutos antes da partida. Chegue à paragem com antecedência.
-          </p>
-        )}
         {activas.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {activas.map((v) => (
