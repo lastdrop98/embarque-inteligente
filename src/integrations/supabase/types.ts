@@ -446,6 +446,7 @@ export type Database = {
       rotas: {
         Row: {
           created_at: string
+          data_viagem: string | null
           distancia_km: number | null
           embarque_fechado: boolean
           estado: Database["public"]["Enums"]["estado_rota"]
@@ -465,6 +466,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
