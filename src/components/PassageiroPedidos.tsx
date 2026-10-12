@@ -267,7 +267,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                 </div>
               ) : (
                 <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-                  Não existem viagens agendadas para este trajecto e data. O operador precisa de configurar a rota e marcar o estado como “Agendada”.
+                  Não existem viagens disponíveis para este trajecto e data. O operador precisa de definir data e horários, atribuir um autocarro e marcar a rota como “Agendada”.
                 </p>
               )}
             </div>
