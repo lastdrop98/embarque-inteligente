@@ -160,6 +160,8 @@ DROP POLICY IF EXISTS historico_ocultos_delete_proprio ON public.historico_ocult
 CREATE POLICY historico_ocultos_delete_proprio ON public.historico_ocultos
 FOR DELETE TO authenticated USING (user_id = auth.uid());
 
+ALTER TABLE public.rotas ADD COLUMN IF NOT EXISTS data_viagem date;
+CREATE INDEX IF NOT EXISTS idx_rotas_data_estado ON public.rotas(data_viagem, estado);
 NOTIFY pgrst, 'reload schema';`;
 const candidates = [
   process.env.LOVABLE_DB_MIGRATION_URL,
