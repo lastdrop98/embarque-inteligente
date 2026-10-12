@@ -64,6 +64,13 @@
       "when": 1791809700000,
       "tag": "0008_avaliacoes_viagem",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791813300000,
+      "tag": "0009_reconciliar_seguranca_avaliacoes",
+      "breakpoints": true
     }
   ]
 }
