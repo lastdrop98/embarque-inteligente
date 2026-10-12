@@ -594,7 +594,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
               <Input className="h-8 w-36" type="date" value={dataEdicao} onChange={(e) => setDataEdicao(e.target.value)} aria-label="Data da viagem" />
               <Input className="h-8 w-28" type="number" min={0} placeholder="Previstos" value={previstosEdicao} onChange={(e) => setPrevistosEdicao(e.target.value)} />
               <Button size="sm" disabled={!nomeEdicao.trim() || editarRota.isPending} onClick={() => editarRota.mutate()}><Save className="mr-1 h-4 w-4" />Guardar</Button>
-              <Button size="sm" variant="ghost" disabled={editarRota.isPending} onClick={() => { setAEditar(false); setNomeEdicao(rota.nome); }}><X className="mr-1 h-4 w-4" />Cancelar</Button>
+              <Button size="sm" variant="ghost" disabled={editarRota.isPending} onClick={() => { setAEditar(false); setNomeEdicao(rota.nome); setInicioEdicao(rota.hora_inicio?.slice(0, 5) ?? ""); setFimEdicao(rota.hora_fim?.slice(0, 5) ?? ""); setPrevistosEdicao(String(rota.passageiros_previstos ?? "")); setDataEdicao(rota.data_viagem ?? ""); }}><X className="mr-1 h-4 w-4" />Cancelar</Button>
             </div>
           ) : (
             <>
