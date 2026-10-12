@@ -8,6 +8,7 @@ export type DadosBilhete = {
   token: string;
   passageiro: string;
   rota: string;
+  dataViagem?: string | null;
   veiculo?: string | null;
   paragemEmbarque?: string | null;
   horaEmbarque?: string | null;
@@ -19,6 +20,7 @@ export type DadosBilhete = {
 const ESTADO_INFO: Record<string, { rotulo: string; cor: string }> = {
   pendente: { rotulo: "Confirmado", cor: "bg-amber-500 text-white" },
   a_bordo: { rotulo: "A bordo", cor: "bg-emerald-600 text-white" },
+  desembarcado: { rotulo: "Desembarcado", cor: "bg-emerald-600 text-white" },
   concluida: { rotulo: "Concluída", cor: "bg-emerald-600 text-white" },
   recusada: { rotulo: "Inválido", cor: "bg-destructive text-destructive-foreground" },
 };
@@ -49,6 +51,7 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Embarque</p>
             <p className="font-medium">{dados.paragemEmbarque ?? "—"}</p>
+            {dados.dataViagem && <p className="text-xs text-muted-foreground">{dados.dataViagem}</p>}
             {dados.horaEmbarque && <p className="text-xs text-muted-foreground">{dados.horaEmbarque.slice(0, 5)}</p>}
           </div>
           <div>
