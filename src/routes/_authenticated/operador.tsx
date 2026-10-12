@@ -533,6 +533,15 @@ function RotaCard({ rota }: { rota: RotaRow }) {
 
   const mudarEstado = useMutation({
     mutationFn: async (novoEstado: string) => {
+      if (novoEstado === "agendada") {
+        if (!rota.data_viagem || !rota.hora_inicio || !rota.hora_fim || !rota.veiculos) {
+          throw new Error("Para agendar, defina a data, as horas de partida e chegada e atribua um autocarro.");
+        }
+        const partida = new Date(`${rota.data_viagem}T${rota.hora_inicio.slice(0, 5)}:00+02:00`).getTime();
+        if (Date.now() >= partida - 10 * 60 * 1000) {
+          throw new Error("A partida deve estar a mais de 10 minutos de distância para abrir as reservas.");
+        }
+      }
       if (novoEstado === "concluida") {
         const { error } = await supabase.rpc("concluir_rota_segura", { _rota_id: rota.id });
         if (error) throw error;
