@@ -39,13 +39,14 @@ function OperadorPage() {
         <p className="text-sm text-muted-foreground">Rotas, paragens, passageiros e bilhetes QR.</p>
       </div>
       <Tabs defaultValue="rotas">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="rotas">Rotas</TabsTrigger>
           <TabsTrigger value="veiculos">Veículos</TabsTrigger>
           <TabsTrigger value="delegacoes">Delegações</TabsTrigger>
           <TabsTrigger value="passageiros">Passageiros</TabsTrigger>
           <TabsTrigger value="viagens">Atribuições</TabsTrigger>
+          <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
         </TabsList>
         <TabsContent value="pedidos" className="mt-6"><PedidosOperador /></TabsContent>
         <TabsContent value="rotas" className="mt-6"><Rotas /></TabsContent>
@@ -53,6 +54,7 @@ function OperadorPage() {
         <TabsContent value="delegacoes" className="mt-6"><Delegacoes /></TabsContent>
         <TabsContent value="passageiros" className="mt-6"><Passageiros /></TabsContent>
         <TabsContent value="viagens" className="mt-6"><Viagens /></TabsContent>
+        <TabsContent value="avaliacoes" className="mt-6"><Avaliacoes /></TabsContent>
       </Tabs>
     </div>
   );
@@ -893,6 +895,71 @@ function Viagens() {
           }) : <p className="text-sm text-muted-foreground">Ainda não há bilhetes.</p>}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+
+/* ---------------- Avaliações dos passageiros ---------------- */
+
+function Avaliacoes() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["avaliacoes-operador"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avaliacoes")
+        .select("id, nota, comentario, created_at, viagem_id, viagens_passageiro:viagens_passageiro(passageiros(nome), rotas(nome))")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data as unknown as Array<{
+        id: string;
+        nota: number;
+        comentario: string | null;
+        created_at: string;
+        viagem_id: string;
+        viagens_passageiro: {
+          passageiros: { nome: string } | null;
+          rotas: { nome: string } | null;
+        } | null;
+      }>;
+    },
+  });
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">A carregar avaliações…</p>;
+  if (error) return <p className="text-sm text-destructive">Não foi possível carregar as avaliações: {(error as Error).message}</p>;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Avaliações e comentários</h2>
+        <p className="text-sm text-muted-foreground">Feedback dos passageiros após viagens concluídas.</p>
+      </div>
+      {data?.length ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {data.map((avaliacao) => (
+            <Card key={avaliacao.id}>
+              <CardContent className="space-y-2 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{avaliacao.viagens_passageiro?.passageiros?.nome ?? "Passageiro"}</p>
+                    <p className="text-xs text-muted-foreground">{avaliacao.viagens_passageiro?.rotas?.nome ?? "Viagem"}</p>
+                  </div>
+                  <Badge variant="secondary" aria-label={`${avaliacao.nota} de 5 estrelas`}>
+                    {"★".repeat(Math.max(0, Math.min(5, Number(avaliacao.nota))))}{"☆".repeat(5 - Math.max(0, Math.min(5, Number(avaliacao.nota))))}
+                  </Badge>
+                </div>
+                <p className="text-sm">{avaliacao.comentario?.trim() || "Sem comentário escrito."}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(avaliacao.created_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Ainda não existem avaliações de passageiros.</p>
+      )}
     </div>
   );
 }
