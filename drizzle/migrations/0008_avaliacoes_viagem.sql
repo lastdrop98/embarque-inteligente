@@ -30,7 +30,7 @@ GRANT SELECT, INSERT ON public.avaliacoes TO authenticated;
 GRANT ALL ON public.avaliacoes TO service_role;
 
 -- Remover políticas antigas para que uma política permissiva anterior não contorne estas regras.
-DO $
+DO $$
 DECLARE
   politica record;
 BEGIN
@@ -40,7 +40,7 @@ BEGIN
   LOOP
     EXECUTE format('DROP POLICY %I ON public.avaliacoes', politica.policyname);
   END LOOP;
-END $;
+END $$;
 
 CREATE POLICY avaliacoes_select_autorizado ON public.avaliacoes
 FOR SELECT TO authenticated
@@ -70,5 +70,4 @@ WITH CHECK (
 );
 
 -- Apenas leitura autorizada e submissão de avaliações após conclusão são permitidas.
-
 NOTIFY pgrst, 'reload schema';
