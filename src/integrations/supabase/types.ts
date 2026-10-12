@@ -479,6 +479,7 @@ export type Database = {
       rotas: {
         Row: {
           created_at: string
+          data_servico: string | null
           distancia_km: number | null
           embarque_fechado: boolean
           estado: Database["public"]["Enums"]["estado_rota"]
@@ -498,6 +499,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_servico?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
@@ -517,6 +519,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_servico?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
@@ -718,6 +721,33 @@ export type Database = {
       notificar_novo_pedido: { Args: { _pedido_id: string }; Returns: number }
       pode_gerir_rota: { Args: { _rota_id: string }; Returns: boolean }
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
+      pontos_disponiveis: {
+        Args: { _data: string }
+        Returns: {
+          nome: string
+        }[]
+      }
+      reservar_viagem: {
+        Args: {
+          _desembarque_id: string
+          _embarque_id: string
+          _rota_id: string
+        }
+        Returns: string
+      }
+      rotas_disponiveis: {
+        Args: { _data: string; _destino: string; _origem: string }
+        Returns: {
+          hora_chegada: string
+          hora_partida: string
+          lugares_livres: number
+          paragem_desembarque_id: string
+          paragem_embarque_id: string
+          rota_id: string
+          rota_nome: string
+          veiculo: string
+        }[]
+      }
     }
     Enums: {
       app_role:

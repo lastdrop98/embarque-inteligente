@@ -29,6 +29,13 @@
       "when": 1790578980234,
       "tag": "0003_notificacoes_incidentes_e_motorista",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791816593719,
+      "tag": "0004_reserva_viagem_passageiro_e_seguranca",
+      "breakpoints": true
     }
   ]
 }
