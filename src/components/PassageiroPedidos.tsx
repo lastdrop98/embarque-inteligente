@@ -113,58 +113,37 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     },
   });
 
-  const criarPedido = useMutation({
+  const { data: viagensAtivas, isLoading: aCarregarViagensAtivas, error: erroViagensAtivas } = useQuery({
+    queryKey: ["viagens-ativas-passageiro", passageiro.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("viagens_passageiro")
+        .select("id, estado")
+        .eq("passageiro_id", passageiro.id)
+        .in("estado", ["pendente", "a_bordo", "desembarcado"]);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const confirmarViagem = useMutation({
     mutationFn: async () => {
-      if (!origem || !destino) throw new Error("Escolha a origem e o destino.");
-      if (origem === destino) throw new Error("A origem e o destino devem ser diferentes.");
+      if (!origem || !destino || origem === destino) throw new Error("Escolha a origem e um destino diferente.");
       if (!rotaSelecionada) throw new Error("Escolha uma das viagens disponíveis.");
       if (rotaSelecionada.embarqueFechado) throw new Error("O embarque fecha 10 minutos antes da partida.");
-
-      const { data: existentes, error: erroExistente } = await supabase
-        .from("pedidos_transporte")
-        .select("id")
-        .eq("passageiro_id", passageiro.id)
-        .in("estado", ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"])
-        .limit(1);
-      if (erroExistente) throw erroExistente;
-      if (existentes?.length) {
-        throw new Error("Já possui um pedido de viagem activo. Cancele o pedido actual antes de solicitar outra viagem.");
-      }
-
-      const { data, error } = await supabase
-        .from("pedidos_transporte")
-        .insert({
-          titulo: `Viagem de ${passageiro.nome} — ${dataViagem}`,
-          data_viagem: dataViagem,
-          hora: rotaSelecionada.horaEmbarque.slice(0, 5),
-          origem: origem.trim(),
-          destino: destino.trim(),
-          num_passageiros: 1,
-          tipo_viatura: null,
-          observacoes: null,
-          categoria: passageiro.categoria,
-          passageiro_id: passageiro.id,
-          criado_por: userId,
-          rota_id: rotaSelecionada.id,
-          estado: "submetido",
-        })
-        .select("id")
-        .single();
+      if (viagensAtivas?.length) throw new Error("Já tem uma viagem activa. Conclua ou cancele a viagem actual antes de reservar outra.");
+      const { error } = await supabase.rpc("reservar_viagem_passageiro", {
+        _rota_id: rotaSelecionada.id,
+        _paragem_embarque_id: rotaSelecionada.embarque.id,
+        _paragem_desembarque_id: rotaSelecionada.desembarque.id,
+      });
       if (error) throw error;
-
-      try {
-        const { error: notifError } = await supabase.rpc("notificar_novo_pedido", { _pedido_id: data.id });
-        if (notifError) console.error(notifError);
-      } catch (e) {
-        console.error(e);
-      }
     },
     onSuccess: () => {
-      toast.success("Pedido de viagem enviado");
-      setOrigem("");
-      setDestino("");
+      toast.success("Viagem confirmada! O bilhete já está disponível na sua área.");
       setRotaId("");
-      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
+      qc.invalidateQueries({ queryKey: ["minhas-viagens", passageiro.id] });
+      qc.invalidateQueries({ queryKey: ["viagens-ativas-passageiro", passageiro.id] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -213,7 +192,10 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     origem !== destino &&
     !!rotaSelecionada &&
     !rotaSelecionada.embarqueFechado &&
-    !criarPedido.isPending &&
+    !aCarregarViagensAtivas &&
+    !erroViagensAtivas &&
+    !viagensAtivas?.length &&
+    !confirmarViagem.isPending &&
     !pedidos?.some((p) => ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"].includes(p.estado));
 
   return (
@@ -225,7 +207,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
             Passageiro: <strong>{passageiro.nome}</strong> · ID: <strong>{passageiro.id.slice(0, 8).toUpperCase()}</strong>
           </p>
           <p className="text-sm text-muted-foreground">
-            Só pode existir uma solicitação activa por passageiro.
+            Só pode existir uma viagem activa por passageiro.
           </p>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
@@ -287,9 +269,10 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                 </p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">O horário, a rota e o autocarro são definidos pelo operador. O embarque fecha 10 minutos antes da partida.</p>
-            <Button disabled={!podeEnviar} onClick={() => criarPedido.mutate()}>
-              {criarPedido.isPending ? "A enviar..." : "Solicitar viagem"}
+            {erroViagensAtivas && <p className="text-xs text-destructive">Não foi possível verificar se já tem uma viagem activa. Actualize a página e tente novamente.</p>}
+            <p className="text-xs text-muted-foreground">O horário, a rota e o autocarro são definidos pelo operador. Ao confirmar, a viagem fica registada e o bilhete QR é emitido. O embarque fecha 10 minutos antes da partida.</p>
+            <Button disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
+              {confirmarViagem.isPending ? "A confirmar..." : "Confirmar viagem"}
             </Button>
           </div>
         </CardContent>
