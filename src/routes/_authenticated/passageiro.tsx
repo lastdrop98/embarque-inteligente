@@ -27,7 +27,7 @@ type ViagemRow = {
   token_qr: string;
   created_at: string;
   passageiros: { nome: string } | null;
-  rotas: { nome: string; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
+  rotas: { nome: string; data_viagem: string | null; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
   embarque: (PosParagem & { hora_prevista: string | null }) | null;
   desembarque: { nome: string } | null;
 };
@@ -61,7 +61,7 @@ function Conteudo({ userId }: { userId: string }) {
       const { data, error } = await supabase
         .from("viagens_passageiro")
         .select(
-          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
+          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, data_viagem, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
         )
         .eq("passageiro_id", passageiro!.id)
         .order("created_at", { ascending: false });
@@ -148,7 +148,7 @@ function Conteudo({ userId }: { userId: string }) {
 
   const idsAvaliados = useMemo(() => new Set((avaliacoes ?? []).map((a) => a.viagem_id)), [avaliacoes]);
 
-  const activas = (viagens ?? []).filter((v) => v.estado === "pendente" || v.estado === "a_bordo");
+  const activas = (viagens ?? []).filter((v) => v.estado === "pendente" || v.estado === "a_bordo" || v.estado === "desembarcado");
   const historico = (viagens ?? []).filter(
     (v) =>
       (v.estado === "concluida" || v.estado === "recusada") &&
@@ -159,6 +159,7 @@ function Conteudo({ userId }: { userId: string }) {
     token: v.token_qr,
     passageiro: v.passageiros?.nome ?? "—",
     rota: v.rotas?.nome ?? "—",
+    dataViagem: v.rotas?.data_viagem ?? null,
     veiculo: v.rotas?.veiculos?.nome ?? null,
     paragemEmbarque: v.embarque?.nome ?? null,
     horaEmbarque: v.embarque?.hora_prevista ?? null,
