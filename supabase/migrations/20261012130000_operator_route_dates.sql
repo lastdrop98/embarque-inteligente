@@ -1,5 +1,14 @@
 ALTER TABLE public.rotas ADD COLUMN IF NOT EXISTS data_viagem date;
 CREATE INDEX IF NOT EXISTS idx_rotas_data_estado ON public.rotas(data_viagem, estado);
+UPDATE public.paragens p
+SET hora_prevista = r.hora_inicio + ((r.hora_fim - r.hora_inicio) / 2)
+FROM public.rotas r
+WHERE p.rota_id = r.id
+  AND p.hora_prevista IS NULL
+  AND p.ordem > 1
+  AND p.ordem < (SELECT max(p2.ordem) FROM public.paragens p2 WHERE p2.rota_id = r.id)
+  AND r.hora_inicio IS NOT NULL
+  AND r.hora_fim IS NOT NULL;
 DROP POLICY IF EXISTS rotas_select_passageiro_agendadas ON public.rotas;
 CREATE POLICY rotas_select_passageiro_agendadas ON public.rotas
 FOR SELECT TO authenticated
