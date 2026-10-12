@@ -59,9 +59,10 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     queryFn: async () => {
       const { data: rotas, error } = await supabase
         .from("rotas")
-        .select("id, nome, data_viagem, hora_inicio, hora_fim, estado, veiculos(nome, matricula, lugares), paragens(id, nome, ordem, hora_prevista)")
+        .select("id, nome, data_viagem, hora_inicio, hora_fim, estado, veiculo_id, veiculos(nome, matricula, lugares), paragens(id, nome, ordem, hora_prevista)")
         .eq("data_viagem", dataViagem)
         .eq("estado", "agendada")
+        .not("veiculo_id", "is", null)
         .order("hora_inicio");
       if (error) throw error;
 
