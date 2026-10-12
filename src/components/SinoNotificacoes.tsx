@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Volume2, VolumeX, X } from "lucide-react";
+import { Bell, CheckCheck, Volume2, VolumeX, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  definirSom,
+  mostrarAvisoSistema,
+  pedirPermissaoAvisos,
+  somActivo,
+  tocarSomNotificacao,
+} from "@/lib/somNotificacao";
 import { toast } from "sonner";
 
 type Notificacao = {
@@ -17,193 +28,233 @@ type Notificacao = {
 export function SinoNotificacoes({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const [aberto, setAberto] = useState(false);
-  const [somAtivo, setSomAtivo] = useState(() => localStorage.getItem("som_notificacoes") === "1");
-  const touchStartX = useRef<number | null>(null);
-  const somAtivoRef = useRef(somAtivo);
+  const [som, setSom] = useState(false);
+
+  useEffect(() => {
+    setSom(somActivo());
+  }, []);
 
   const { data } = useQuery({
     queryKey: ["notificacoes", userId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("notificacoes")
-        .select("*")
+        .select("id, tipo, mensagem, lida, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(30);
       if (error) throw error;
       return data as Notificacao[];
     },
   });
 
-  function tocarSom() {
-    if (!somAtivoRef.current) return;
-    try {
-      const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const ganho = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      ganho.gain.setValueAtTime(0.0001, ctx.currentTime);
-      ganho.gain.exponentialRampToValueAtTime(0.06, ctx.currentTime + 0.01);
-      ganho.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-      osc.connect(ganho);
-      ganho.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
-      window.setTimeout(() => void ctx.close(), 300);
-    } catch {
-      // O browser pode bloquear áudio; não interromper a aplicação.
-    }
-  }
-
   useEffect(() => {
     const canal = supabase
-      .channel(`notificacoes-${userId}-${crypto.randomUUID()}`)
+      .channel("notificacoes-" + userId)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
         (payload) => {
-          const nova = payload.new as Notificacao;
-          qc.setQueryData<Notificacao[]>(["notificacoes", userId], (actual = []) => [nova, ...actual].slice(0, 20));
-          tocarSom();
-          if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
-            new Notification("PickApp Mobility", { body: nova.mensagem });
-          }
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
-        () => qc.invalidateQueries({ queryKey: ["notificacoes", userId] }),
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "notificacoes", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const removida = payload.old as { id?: string };
-          if (removida?.id) {
-            qc.setQueryData<Notificacao[]>(["notificacoes", userId], (actual = []) => actual.filter((n) => n.id !== removida.id));
-          } else {
-            qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
+          qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
+          if (payload.eventType === "INSERT") {
+            const mensagem = (payload.new as { mensagem?: string }).mensagem ?? "Nova notificação";
+            tocarSomNotificacao();
+            mostrarAvisoSistema(mensagem);
           }
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(canal); };
+    return () => {
+      supabase.removeChannel(canal);
+    };
   }, [userId, qc]);
 
-  const notificacoes = data ?? [];
-  const naoLidas = notificacoes.filter((n) => !n.lida).length;
-
-  async function ativarSom() {
-    try {
-      const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
-        await ctx.resume();
-        const osc = ctx.createOscillator();
-        const ganho = ctx.createGain();
-        ganho.gain.value = 0.0001;
-        osc.connect(ganho);
-        ganho.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.03);
-        window.setTimeout(() => void ctx.close(), 100);
-      }
-    } catch {}
-    localStorage.setItem("som_notificacoes", "1");
-    somAtivoRef.current = true;
-    setSomAtivo(true);
-    if ("Notification" in window && Notification.permission === "default") {
-      try { await Notification.requestPermission(); } catch {}
-    }
-    toast.success("Som das notificações activado");
-  }
-
-  function desativarSom() {
-    localStorage.removeItem("som_notificacoes");
-    somAtivoRef.current = false;
-    setSomAtivo(false);
-  }
+  const lista = data ?? [];
+  const naoLidas = lista.filter((n) => !n.lida).length;
 
   async function marcarComoLidas() {
-    const ids = notificacoes.filter((n) => !n.lida).map((n) => n.id);
-    if (!ids.length) return;
-    const { error } = await supabase.from("notificacoes").update({ lida: true }).eq("user_id", userId).in("id", ids);
-    if (error) { toast.error("Não foi possível marcar as notificações como lidas"); return; }
-    qc.setQueryData<Notificacao[]>(["notificacoes", userId], (actual = []) => actual.map((n) => ids.includes(n.id) ? { ...n, lida: true } : n));
+    const idsPorLer = lista.filter((n) => !n.lida).map((n) => n.id);
+    if (!idsPorLer.length) return;
+    await supabase.from("notificacoes").update({ lida: true }).in("id", idsPorLer).eq("user_id", userId);
+    qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
+  }
+
+  function removerLocalmente(ids: string[]) {
+    qc.setQueryData<Notificacao[]>(["notificacoes", userId], (antigo) =>
+      (antigo ?? []).filter((n) => !ids.includes(n.id)),
+    );
   }
 
   async function removerNotificacao(id: string) {
-    const anterior = notificacoes;
-    qc.setQueryData<Notificacao[]>(["notificacoes", userId], anterior.filter((n) => n.id !== id));
-    const { error } = await supabase.from("notificacoes").delete().eq("id", id).eq("user_id", userId);
+    removerLocalmente([id]);
+    const { error } = await supabase
+      .from("notificacoes")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
     if (error) {
-      qc.setQueryData(["notificacoes", userId], anterior);
-      toast.error("Não foi possível remover a notificação");
+      toast.error("Não foi possível remover a notificação.");
     }
+    qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
   }
 
   async function limparLidas() {
-    const lidas = notificacoes.filter((n) => n.lida);
-    if (!lidas.length) return;
-    const ids = lidas.map((n) => n.id);
-    const anterior = notificacoes;
-    qc.setQueryData<Notificacao[]>(["notificacoes", userId], notificacoes.filter((n) => !n.lida));
-    const { error } = await supabase.from("notificacoes").delete().eq("user_id", userId).in("id", ids);
-    if (error) {
-      qc.setQueryData(["notificacoes", userId], anterior);
-      toast.error("Não foi possível limpar as notificações lidas");
+    const ids = lista.filter((n) => n.lida).map((n) => n.id);
+    if (!ids.length) {
+      toast.info("Não há notificações lidas para limpar.");
+      return;
+    }
+    removerLocalmente(ids);
+    const { error } = await supabase
+      .from("notificacoes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("lida", true);
+    if (error) toast.error("Não foi possível limpar as notificações lidas.");
+    qc.invalidateQueries({ queryKey: ["notificacoes", userId] });
+  }
+
+  function alternarSom() {
+    const novo = !som;
+    setSom(novo);
+    definirSom(novo);
+    if (novo) {
+      tocarSomNotificacao();
+      void pedirPermissaoAvisos();
+      toast.success("Som das notificações activado");
+    } else {
+      toast.info("Som das notificações desligado");
     }
   }
 
   return (
-    <DropdownMenu open={aberto} onOpenChange={(v) => { setAberto(v); if (v) void marcarComoLidas(); }}>
+    <DropdownMenu
+      open={aberto}
+      onOpenChange={(v) => {
+        setAberto(v);
+        if (v) marcarComoLidas();
+      }}
+    >
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative min-h-11 min-w-11 !bg-white/10 !text-white hover:!bg-white/20 hover:!text-white focus-visible:!text-white" aria-label="Notificações">
-          <Bell className="h-5 w-5 !text-white stroke-[2.25]" />
-          {naoLidas > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">{naoLidas}</span>}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Notificações"
+          className="relative h-10 w-10 text-sidebar-foreground hover:bg-sidebar-accent"
+        >
+          <Bell className="h-5 w-5" />
+          {naoLidas > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+              {naoLidas}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[min(92vw,24rem)] p-0">
-        <div className="flex items-center justify-between px-3 py-2">
-          <DropdownMenuLabel className="p-0">Notificações</DropdownMenuLabel>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="w-[min(22rem,calc(100vw-1.5rem))] p-0"
+      >
+        <div className="flex items-center justify-between gap-2 border-b px-3 py-2">
+          <span className="text-sm font-semibold">Notificações</span>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-9" onClick={() => somAtivo ? desativarSom() : void ativarSom()} aria-label="Som das notificações">
-              {somAtivo ? <Volume2 className="mr-1 h-4 w-4" /> : <VolumeX className="mr-1 h-4 w-4" />}
-              <span className="hidden sm:inline">{somAtivo ? "Som activo" : "Activar som"}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={som ? "Desligar som das notificações" : "Activar som das notificações"}
+              title={som ? "Desligar som" : "Activar som das notificações"}
+              onClick={alternarSom}
+            >
+              {som ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
             </Button>
-            <Button variant="ghost" size="sm" className="h-9" onClick={() => void limparLidas()}>Limpar lidas</Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              aria-label="Limpar notificações lidas"
+              title="Limpar lidas"
+              onClick={limparLidas}
+            >
+              <CheckCheck className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <DropdownMenuSeparator />
-        <div className="max-h-[min(70vh,32rem)] overflow-y-auto">
-          {!notificacoes.length && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Sem notificações.</p>}
-          {notificacoes.slice(0, 10).map((n) => (
-            <div
-              key={n.id}
-              className="group flex touch-pan-y items-start gap-2 border-b px-3 py-3 last:border-b-0"
-              onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
-              onTouchEnd={(e) => {
-                const start = touchStartX.current;
-                const end = e.changedTouches[0]?.clientX ?? start ?? 0;
-                touchStartX.current = null;
-                if (start !== null && start - end > 60) void removerNotificacao(n.id);
-              }}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm">{n.mensagem}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString("pt-PT")}</p>
-              </div>
-              <Button variant="ghost" size="icon" aria-label="Remover notificação" className="h-9 w-9 shrink-0" onClick={() => void removerNotificacao(n.id)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+
+        <div className="max-h-[60vh] overflow-y-auto">
+          {!lista.length && (
+            <p className="px-3 py-6 text-center text-sm text-muted-foreground">Sem notificações.</p>
+          )}
+          {lista.map((n) => (
+            <LinhaNotificacao key={n.id} notificacao={n} onRemover={() => removerNotificacao(n.id)} />
           ))}
         </div>
+
+        {!som && (
+          <p className="border-t px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+            Active o som para ouvir um aviso quando chegar uma notificação nova.
+          </p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function LinhaNotificacao({
+  notificacao,
+  onRemover,
+}: {
+  notificacao: Notificacao;
+  onRemover: () => void;
+}) {
+  const [desvio, setDesvio] = useState(0);
+  const inicio = useRef<number | null>(null);
+
+  return (
+    <div className="relative overflow-hidden border-b last:border-b-0">
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-destructive px-4 text-xs font-medium text-destructive-foreground">
+        Remover
+      </div>
+      <div
+        className="relative flex items-start justify-between gap-2 bg-popover px-3 py-2.5 transition-transform"
+        style={{ transform: `translateX(${desvio}px)` }}
+        onTouchStart={(e) => {
+          inicio.current = e.touches[0]?.clientX ?? null;
+        }}
+        onTouchMove={(e) => {
+          if (inicio.current === null) return;
+          const delta = (e.touches[0]?.clientX ?? 0) - inicio.current;
+          setDesvio(Math.min(0, Math.max(-140, delta)));
+        }}
+        onTouchEnd={() => {
+          if (desvio < -90) {
+            setDesvio(-400);
+            onRemover();
+          } else {
+            setDesvio(0);
+          }
+          inicio.current = null;
+        }}
+      >
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className={`text-sm ${notificacao.lida ? "" : "font-medium"}`}>{notificacao.mensagem}</span>
+          <span className="text-xs text-muted-foreground">
+            {new Date(notificacao.created_at).toLocaleString("pt-PT")}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Remover notificação"
+          className="h-8 w-8 shrink-0 text-muted-foreground"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemover();
+          }}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
   );
 }

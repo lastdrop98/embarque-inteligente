@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">PickApp Mobility</title>
-  <desc id="desc">Marcador de localização minimalista com interior transparente e contorno azul.</desc>
-  <g fill="none" stroke="#147BFF" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M32 3C18.2 3 7 14.2 7 28c0 17.7 25 33 25 33s25-15.3 25-33C57 14.2 45.8 3 32 3Z" stroke-width="3.2"/>
-    <circle cx="32" cy="28" r="8" stroke-width="3"/>
-  </g>
-</svg>

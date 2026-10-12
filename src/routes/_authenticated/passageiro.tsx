@@ -14,7 +14,7 @@ import { PassageiroPedidos } from "@/components/PassageiroPedidos";
 export const Route = createFileRoute("/_authenticated/passageiro")({
   head: () => ({
     meta: [
-      { title: "Os meus bilhetes — PickApp Mobility" },
+      { title: "Os meus bilhetes — Rotas & Embarque QR" },
       { name: "description", content: "Bilhetes activos, histórico de viagens e acompanhamento em tempo real." },
     ],
   }),
@@ -27,7 +27,7 @@ type ViagemRow = {
   token_qr: string;
   created_at: string;
   passageiros: { nome: string } | null;
-  rotas: { nome: string; data_viagem: string | null; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
+  rotas: { nome: string; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
   embarque: (PosParagem & { hora_prevista: string | null }) | null;
   desembarque: { nome: string } | null;
 };
@@ -61,7 +61,7 @@ function Conteudo({ userId }: { userId: string }) {
       const { data, error } = await supabase
         .from("viagens_passageiro")
         .select(
-          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, data_viagem, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
+          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
         )
         .eq("passageiro_id", passageiro!.id)
         .order("created_at", { ascending: false });
@@ -104,36 +104,6 @@ function Conteudo({ userId }: { userId: string }) {
     };
   }, [passageiro?.id, qc]);
 
-  const { data: historicosOcultos } = useQuery({
-    queryKey: ["historico-ocultos", userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("historico_ocultos")
-        .select("entidade_id")
-        .eq("user_id", userId)
-        .eq("entidade_tipo", "viagem");
-      if (error) throw error;
-      return new Set((data ?? []).map((item) => item.entidade_id));
-    },
-  });
-
-  async function ocultarHistorico(viagemId: string) {
-    const { error } = await supabase.from("historico_ocultos").upsert(
-      {
-        user_id: userId,
-        entidade_tipo: "viagem",
-        entidade_id: viagemId,
-      },
-      { onConflict: "user_id,entidade_tipo,entidade_id" },
-    );
-    if (error) {
-      toast.error("Não foi possível remover este histórico.");
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["historico-ocultos", userId] });
-    toast.success("Viagem removida do seu histórico.");
-  }
-
   const { data: avaliacoes } = useQuery({
     queryKey: ["minhas-avaliacoes", passageiro?.id],
     enabled: !!viagens?.length,
@@ -148,18 +118,13 @@ function Conteudo({ userId }: { userId: string }) {
 
   const idsAvaliados = useMemo(() => new Set((avaliacoes ?? []).map((a) => a.viagem_id)), [avaliacoes]);
 
-  const activas = (viagens ?? []).filter((v) => v.estado === "pendente" || v.estado === "a_bordo" || v.estado === "desembarcado");
-  const historico = (viagens ?? []).filter(
-    (v) =>
-      (v.estado === "concluida" || v.estado === "recusada") &&
-      !historicosOcultos?.has(v.id),
-  );
+  const activas = (viagens ?? []).filter((v) => v.estado === "pendente" || v.estado === "a_bordo");
+  const historico = (viagens ?? []).filter((v) => v.estado === "concluida" || v.estado === "recusada");
 
   const paraDados = (v: ViagemRow): DadosBilhete => ({
     token: v.token_qr,
     passageiro: v.passageiros?.nome ?? "—",
     rota: v.rotas?.nome ?? "—",
-    dataViagem: v.rotas?.data_viagem ?? null,
     veiculo: v.rotas?.veiculos?.nome ?? null,
     paragemEmbarque: v.embarque?.nome ?? null,
     horaEmbarque: v.embarque?.hora_prevista ?? null,
@@ -223,20 +188,7 @@ function Conteudo({ userId }: { userId: string }) {
           <div className="space-y-3">
             {historico.map((v) => (
               <div key={v.id} className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <BilhetePass dados={paraDados(v)} compacto />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => void ocultarHistorico(v.id)}
-                  >
-                    Remover
-                  </Button>
-                </div>
+                <BilhetePass dados={paraDados(v)} compacto />
                 {v.estado === "concluida" && !idsAvaliados.has(v.id) && (
                   <FormularioAvaliacao viagemId={v.id} passageiroId={passageiro.id} />
                 )}
@@ -271,18 +223,16 @@ function FormularioAvaliacao({ viagemId, passageiroId }: { viagemId: string; pas
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <p className="text-sm font-medium">Avaliação e comentário</p>
-        <p className="text-xs text-muted-foreground">Avalie de 1 a 5 estrelas e partilhe a sua experiência.</p>
+        <p className="text-sm font-medium">Como foi a viagem?</p>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
-              aria-label={`Avaliar com ${n} estrela(s)`}
               onClick={() => setNota(n)}
-              className={`h-9 w-9 rounded-md border text-xl font-semibold ${n <= nota ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
+              className={`h-8 w-8 rounded-md border text-sm font-semibold ${n <= nota ? "bg-primary text-primary-foreground" : "bg-background"}`}
             >
-              {n <= nota ? "★" : "☆"}
+              {n}
             </button>
           ))}
         </div>

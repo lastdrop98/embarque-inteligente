@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Check, Copy, QrCode } from "lucide-react";
 import QRCode from "qrcode";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +7,6 @@ export type DadosBilhete = {
   token: string;
   passageiro: string;
   rota: string;
-  dataViagem?: string | null;
   veiculo?: string | null;
   paragemEmbarque?: string | null;
   horaEmbarque?: string | null;
@@ -18,24 +16,15 @@ export type DadosBilhete = {
 };
 
 const ESTADO_INFO: Record<string, { rotulo: string; cor: string }> = {
-  pendente: { rotulo: "Confirmado", cor: "bg-amber-500 text-white" },
+  pendente: { rotulo: "Pendente", cor: "bg-amber-500 text-white" },
   a_bordo: { rotulo: "A bordo", cor: "bg-emerald-600 text-white" },
-  desembarcado: { rotulo: "Desembarcado", cor: "bg-emerald-600 text-white" },
   concluida: { rotulo: "Concluída", cor: "bg-emerald-600 text-white" },
   recusada: { rotulo: "Inválido", cor: "bg-destructive text-destructive-foreground" },
 };
 
 export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; compacto?: boolean }) {
   const [qr, setQr] = useState("");
-  const [copiado, setCopiado] = useState(false);
   const info = ESTADO_INFO[dados.estado] ?? { rotulo: dados.estado, cor: "bg-secondary" };
-  const horaFechoEmbarque = (() => {
-    if (!dados.horaEmbarque) return null;
-    const partes = dados.horaEmbarque.slice(0, 5).split(":").map(Number);
-    if (partes.length !== 2 || partes.some((n) => !Number.isFinite(n))) return null;
-    const total = (partes[0] * 60 + partes[1] - 10 + 24 * 60) % (24 * 60);
-    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-  })();
 
   useEffect(() => {
     QRCode.toDataURL(dados.token, { width: 480, margin: 1, color: { dark: "#1b2540", light: "#ffffff" } }).then(setQr);
@@ -58,7 +47,6 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
           <div>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Embarque</p>
             <p className="font-medium">{dados.paragemEmbarque ?? "—"}</p>
-            {dados.dataViagem && <p className="text-xs text-muted-foreground">{dados.dataViagem}</p>}
             {dados.horaEmbarque && <p className="text-xs text-muted-foreground">{dados.horaEmbarque.slice(0, 5)}</p>}
           </div>
           <div>
@@ -78,30 +66,7 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             </div>
           )}
         </div>
-                {!compacto && ["pendente", "a_bordo"].includes(dados.estado) && (
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs font-medium text-amber-800 dark:text-amber-300">
-            {horaFechoEmbarque
-              ? `O embarque fecha às ${horaFechoEmbarque}, 10 minutos antes da partida.`
-              : "O embarque fecha 10 minutos antes da partida."}{" "}
-            Chegue à paragem com antecedência.
-          </div>
-        )}
-        <div className="mx-auto max-w-xs rounded-2xl border bg-muted/40 p-3">
-          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Código alternativo</p>
-          <div className="mt-1 flex items-center justify-center gap-2">
-            <span className="font-mono text-xl font-bold tracking-[0.18em] text-foreground">{dados.token}</span>
-            <button
-              type="button"
-              aria-label="Copiar código alternativo"
-              title="Copiar código"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border bg-background transition-all hover:-translate-y-0.5 hover:bg-accent active:scale-95"
-              onClick={() => void copiarCodigo()}
-            >
-              {copiado ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="mt-1 text-[10px] text-muted-foreground">Use este código apenas se não puder fazer a leitura do QR.</p>
-        </div>
+        <p className="font-mono text-[10px] text-muted-foreground">{dados.token}</p>
       </CardContent>
     </Card>
   );

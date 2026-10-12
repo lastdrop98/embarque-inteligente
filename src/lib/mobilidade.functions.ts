@@ -15,9 +15,8 @@ export type BilheteInfo = {
 /** Página pública do passageiro: o token funciona como segredo. */
 export const obterBilhete = createServerFn({ method: "GET" })
   .inputValidator((data: { token: string }) => {
-    const token = data?.token?.trim();
-    if (!token || !/^[A-Za-z0-9_-]{8,128}$/.test(token)) throw new Error("Token inválido");
-    return { token };
+    if (!data?.token || data.token.length < 20) throw new Error("Token inválido");
+    return { token: data.token };
   })
   .handler(async ({ data }): Promise<BilheteInfo | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -90,49 +89,15 @@ export const validarQr = createServerFn({ method: "POST" })
       .eq("token_qr", token)
       .maybeSingle();
 
-    if (!viagem) {
-      // A política RLS pode ocultar bilhetes de outra rota. Consultamos no servidor
-      // apenas a atribuição do QR para informar o motorista sobre o autocarro correcto.
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: bilhete } = await supabaseAdmin
-        .from("viagens_passageiro")
-        .select("id, rota_id, passageiros(nome)")
-        .eq("token_qr", token)
-        .maybeSingle();
-      if (!bilhete) return registar(false, null, "Código QR desconhecido ou inválido.");
-      const { data: rotaCorrecta } = await supabaseAdmin
-        .from("rotas")
-        .select("nome, veiculos(nome, matricula)")
-        .eq("id", bilhete.rota_id)
-        .maybeSingle();
-      const autocarro = rotaCorrecta?.veiculos as unknown as { nome: string; matricula: string } | null;
-      const identificacao = autocarro
-        ? [autocarro.nome, autocarro.matricula].filter(Boolean).join(" · ")
-        : "ainda não atribuído";
-      const motivo = `Embarque recusado. O passageiro está inscrito no autocarro correcto: ${identificacao}${rotaCorrecta?.nome ? ` (rota ${rotaCorrecta.nome})` : ""}.`;
-      const nomeBilhete = (bilhete.passageiros as unknown as { nome: string } | null)?.nome ?? "Passageiro";
-      return { ...(await registar(false, bilhete.id, motivo)), passageiro: nomeBilhete };
-    }
-    if (viagem.rota_id !== data.rotaId) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: rotaCorrecta } = await supabaseAdmin
-        .from("rotas")
-        .select("nome, veiculos(nome, matricula)")
-        .eq("id", viagem.rota_id)
-        .maybeSingle();
-      const autocarro = rotaCorrecta?.veiculos as unknown as { nome: string; matricula: string } | null;
-      const identificacao = autocarro
-        ? [autocarro.nome, autocarro.matricula].filter(Boolean).join(" · ")
-        : "ainda não atribuído";
-      const motivo = `Embarque recusado. O passageiro está inscrito no autocarro correcto: ${identificacao}${rotaCorrecta?.nome ? ` (rota ${rotaCorrecta.nome})` : ""}.`;
-      return { ...(await registar(false, viagem.id, motivo)), passageiro: (viagem.passageiros as unknown as { nome: string } | null)?.nome ?? "Passageiro" };
-    }
+    if (!viagem) return registar(false, null, "Token desconhecido ou não pertence a esta rota/veículo.");
+    if (viagem.rota_id !== data.rotaId)
+      return registar(false, viagem.id, "Passageiro não pertence a esta rota/veículo.");
 
     const nome = (viagem.passageiros as unknown as { nome: string } | null)?.nome ?? "Passageiro";
 
     const { data: rota } = await supabase
       .from("rotas")
-      .select("estado, nome, data_viagem, hora_inicio")
+      .select("estado")
       .eq("id", data.rotaId)
       .maybeSingle();
 
@@ -144,20 +109,6 @@ export const validarQr = createServerFn({ method: "POST" })
     // Isto permite iniciar o turno/GPS antes de concluir o embarque de todos os passageiros.
     if (data.tipo === "embarque" && !["embarque_aberto", "em_curso"].includes(rota.estado)) {
       return { ...(await registar(false, viagem.id, "O embarque não está aberto nesta rota.")), passageiro: nome };
-    }
-
-    if (data.tipo === "embarque" && rota.data_viagem) {
-      const { data: paragemEmbarque } = viagem.paragem_embarque_id
-        ? await supabase.from("paragens").select("hora_prevista").eq("id", viagem.paragem_embarque_id).maybeSingle()
-        : { data: null };
-      const horaEmbarque = paragemEmbarque?.hora_prevista ?? rota.hora_inicio;
-      if (horaEmbarque) {
-        // O servidor aplica o limite usando o fuso local de Maputo (UTC+02:00).
-        const instantePartida = new Date(`${rota.data_viagem}T${horaEmbarque.slice(0, 5)}:00+02:00`).getTime();
-        if (Date.now() >= instantePartida - 10 * 60 * 1000) {
-          return { ...(await registar(false, viagem.id, "Embarque fechado: o embarque fecha 10 minutos antes da partida.")), passageiro: nome };
-        }
-      }
     }
 
     if (data.tipo === "desembarque" && rota.estado !== "em_curso") {

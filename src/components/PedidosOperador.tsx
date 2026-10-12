@@ -18,7 +18,6 @@ const ESTADOS: Record<string, string> = {
   alocado: "Alocado",
   agendado: "Agendado",
   rejeitado: "Rejeitado",
-  cancelado: "Cancelado",
 };
 
 const ESTADOS_ROTA: Record<string, string> = {
@@ -121,68 +120,6 @@ export function PedidosOperador() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const editarPedido = useMutation({
-    mutationFn: async ({ id, campos }: { id: string; campos: Record<string, unknown> }) => {
-      const { error } = await supabase.from("pedidos_transporte").update(campos as Database["public"]["Tables"]["pedidos_transporte"]["Update"]).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido actualizado");
-      qc.invalidateQueries({ queryKey: ["pedidos-operador"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const cancelarPedido = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc("cancelar_pedido", { _pedido_id: id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido cancelado");
-      qc.invalidateQueries({ queryKey: ["pedidos-operador"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const eliminarPedido = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc("eliminar_pedido", { _pedido_id: id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Pedido eliminado");
-      qc.invalidateQueries({ queryKey: ["pedidos-operador"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  const editar = (p: Pedido) => {
-    const titulo = window.prompt("Título", p.titulo ?? "");
-    if (titulo === null) return;
-    const origem = window.prompt("Origem", p.origem);
-    if (origem === null) return;
-    const destino = window.prompt("Destino", p.destino);
-    if (destino === null) return;
-    const data = window.prompt("Data da viagem (AAAA-MM-DD)", p.data_viagem);
-    if (data === null) return;
-    const hora = window.prompt("Hora (HH:MM, opcional)", p.hora?.slice(0, 5) ?? "");
-    if (hora === null) return;
-    const numero = window.prompt("Número de passageiros", String(p.num_passageiros));
-    if (numero === null) return;
-    editarPedido.mutate({
-      id: p.id,
-      campos: {
-        titulo: titulo.trim(),
-        origem: origem.trim(),
-        destino: destino.trim(),
-        data_viagem: data,
-        hora: hora.trim() || null,
-        num_passageiros: Math.max(1, Number(numero) || 1),
-      },
-    });
-  };
 
   const alocar = useMutation({
     mutationFn: async ({ pedido, rotaId, embarqueId, desembarqueId }: {
@@ -348,26 +285,6 @@ export function PedidosOperador() {
                   {pedido.estado === "alocado" && (
                     <Button size="sm" variant="outline" disabled={alterarEstado.isPending} onClick={() => alterarEstado.mutate({ id: pedido.id, estado: "agendado" })}>
                       Marcar como agendado
-                    </Button>
-                  )}
-
-                  <Button size="sm" variant="outline" disabled={editarPedido.isPending} onClick={() => editar(pedido)}>
-                    Editar
-                  </Button>
-
-                  {pedido.estado !== "cancelado" && pedido.estado !== "rejeitado" && (
-                    <Button size="sm" variant="outline" disabled={cancelarPedido.isPending} onClick={() => {
-                      if (window.confirm("Cancelar este pedido?")) cancelarPedido.mutate(pedido.id);
-                    }}>
-                      Cancelar
-                    </Button>
-                  )}
-
-                  {["rascunho", "cancelado", "rejeitado"].includes(pedido.estado) && (
-                    <Button size="sm" variant="destructive" disabled={eliminarPedido.isPending} onClick={() => {
-                      if (window.confirm("Eliminar este pedido? Esta acção não pode ser desfeita.")) eliminarPedido.mutate(pedido.id);
-                    }}>
-                      Eliminar
                     </Button>
                   )}
                 </div>
