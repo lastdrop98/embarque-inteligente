@@ -1,4 +1,4 @@
-name: Validate application
+name: PickApp Mobility CI
 
 on:
   push:
@@ -22,5 +22,5 @@ jobs:
           bun-version: latest
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Build application
-        run: bun run build
+      - name: Build application without production database migration
+        run: bun run build:dev
