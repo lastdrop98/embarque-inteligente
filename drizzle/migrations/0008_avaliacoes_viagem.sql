@@ -29,7 +29,19 @@ ALTER TABLE public.avaliacoes ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT ON public.avaliacoes TO authenticated;
 GRANT ALL ON public.avaliacoes TO service_role;
 
-DROP POLICY IF EXISTS avaliacoes_select_autorizado ON public.avaliacoes;
+-- Remover políticas antigas para que uma política permissiva anterior não contorne estas regras.
+DO $
+DECLARE
+  politica record;
+BEGIN
+  FOR politica IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'avaliacoes'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.avaliacoes', politica.policyname);
+  END LOOP;
+END $;
+
 CREATE POLICY avaliacoes_select_autorizado ON public.avaliacoes
 FOR SELECT TO authenticated
 USING (
@@ -44,7 +56,6 @@ USING (
   OR public.has_role(auth.uid(), 'operador')
 );
 
-DROP POLICY IF EXISTS avaliacoes_insert_viagem_concluida ON public.avaliacoes;
 CREATE POLICY avaliacoes_insert_viagem_concluida ON public.avaliacoes
 FOR INSERT TO authenticated
 WITH CHECK (
@@ -58,9 +69,6 @@ WITH CHECK (
   )
 );
 
--- A avaliação é submetida pelo passageiro após a viagem; edição não é permitida via API.
-DROP POLICY IF EXISTS avaliacoes_update_propria ON public.avaliacoes;
-DROP POLICY IF EXISTS avaliacoes_update ON public.avaliacoes;
-DROP POLICY IF EXISTS avaliacoes_delete ON public.avaliacoes;
+-- Apenas leitura autorizada e submissão de avaliações após conclusão são permitidas.
 
 NOTIFY pgrst, 'reload schema';
