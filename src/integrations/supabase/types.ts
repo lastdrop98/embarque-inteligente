@@ -664,6 +664,10 @@ export type Database = {
       pode_gerir_rota: { Args: { _rota_id: string }; Returns: boolean }
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
     }
+      reservar_viagem_passageiro: {
+        Args: { _rota_id: string; _paragem_embarque_id: string; _paragem_desembarque_id: string }
+        Returns: string
+      }
     Enums: {
       app_role: "operador" | "motorista" | "admin" | "passageiro" | "responsavel_grupo"
       categoria_passageiro:
