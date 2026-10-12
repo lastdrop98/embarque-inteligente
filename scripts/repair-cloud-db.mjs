@@ -226,6 +226,8 @@ BEGIN
   SELECT id INTO _passageiro_id FROM public.passageiros WHERE user_id = _uid LIMIT 1;
   IF _passageiro_id IS NULL THEN RAISE EXCEPTION 'Não existe um perfil de passageiro associado à sua conta.'; END IF;
 
+  PERFORM pg_advisory_xact_lock(hashtextextended(_passageiro_id::text, 0));
+
   SELECT r.id, r.estado, r.data_viagem, r.hora_inicio, r.hora_fim, r.veiculo_id, v.lugares AS capacidade
     INTO _rota
     FROM public.rotas r
