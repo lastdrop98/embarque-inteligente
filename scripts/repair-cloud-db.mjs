@@ -191,7 +191,7 @@ RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $
+AS $function$
 DECLARE
   _uid uuid := auth.uid();
   _passageiro_id uuid;
@@ -276,7 +276,7 @@ BEGIN
     RETURNING id INTO _viagem_id;
   RETURN _viagem_id;
 END;
-$;
+$function$;
 REVOKE ALL ON FUNCTION public.reservar_viagem_passageiro(uuid, uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.reservar_viagem_passageiro(uuid, uuid, uuid) TO authenticated;
 NOTIFY pgrst, 'reload schema';`;
