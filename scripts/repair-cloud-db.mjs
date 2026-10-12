@@ -275,6 +275,12 @@ BEGIN
     WHERE passageiro_id = _passageiro_id AND estado IN ('pendente', 'a_bordo', 'desembarcado')
   ) THEN RAISE EXCEPTION 'Já tem uma viagem activa. Conclua ou cancele a viagem actual antes de reservar outra.'; END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM public.pedidos_transporte
+    WHERE passageiro_id = _passageiro_id
+      AND estado IN ('rascunho', 'submetido', 'em_analise', 'aprovado', 'alocado')
+  ) THEN RAISE EXCEPTION 'Tem um pedido de transporte ainda em análise. Aguarde a decisão do operador ou cancele-o.'; END IF;
+
   _capacidade := _rota.capacidade;
   IF _capacidade IS NOT NULL AND _capacidade > 0 THEN
     SELECT count(*)::integer INTO _ocupados FROM public.viagens_passageiro
