@@ -332,6 +332,25 @@ function Rotas() {
       if (!rotaCriada) throw new Error("A rota foi criada sem devolver o identificador.");
       const { error: erroData } = await supabase.from("rotas").update({ data_viagem: dataViagem }).eq("id", rotaCriada);
       if (erroData) throw erroData;
+      if (paragemId && inicio && fim) {
+        const minutos = (valor: string) => Number(valor.slice(0, 2)) * 60 + Number(valor.slice(3, 5));
+        const inicioMin = minutos(inicio);
+        let fimMin = minutos(fim);
+        if (fimMin < inicioMin) fimMin += 24 * 60;
+        const meio = Math.round((inicioMin + fimMin) / 2) % (24 * 60);
+        const horaIntermedia = String(Math.floor(meio / 60)).padStart(2, "0") + ":" + String(meio % 60).padStart(2, "0") + ":00";
+        const { data: paragemIntermedia, error: erroBuscaParagem } = await supabase
+          .from("paragens")
+          .select("id")
+          .eq("rota_id", rotaCriada)
+          .eq("ordem", 2)
+          .maybeSingle();
+        if (erroBuscaParagem) throw erroBuscaParagem;
+        if (paragemIntermedia) {
+          const { error: erroHoraParagem } = await supabase.from("paragens").update({ hora_prevista: horaIntermedia }).eq("id", paragemIntermedia.id);
+          if (erroHoraParagem) throw erroHoraParagem;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Rota criada");
