@@ -89,8 +89,11 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         const horaEmbarque = embarque.hora_prevista ?? estimarHora(embarque.ordem) ?? rota.hora_inicio;
         const horaChegada = desembarque.hora_prevista ?? estimarHora(desembarque.ordem) ?? rota.hora_fim;
         if (!horaEmbarque || !horaChegada) return [];
+        const horaEmbarqueMin = Number(horaEmbarque.slice(0, 2)) * 60 + Number(horaEmbarque.slice(3, 5));
+        const horaFechoMin = (horaEmbarqueMin - 10 + 24 * 60) % (24 * 60);
+        const horaFechoEmbarque = `${String(Math.floor(horaFechoMin / 60)).padStart(2, "0")}:${String(horaFechoMin % 60).padStart(2, "0")}`;
         const instanteEmbarque = new Date(`${dataViagem}T${horaEmbarque.slice(0, 5)}:00+02:00`).getTime();
-        return [{ ...rota, embarque, desembarque, horaEmbarque, horaChegada, instanteEmbarque }];
+        return [{ ...rota, embarque, desembarque, horaEmbarque, horaChegada, horaFechoEmbarque, instanteEmbarque }];
       });
 
       return candidatas.map((rota) => ({
@@ -257,6 +260,9 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                         </Badge>
                       </div>
                       <p className="mt-1 text-sm">{rota.horaEmbarque.slice(0, 5)} — {rota.horaChegada.slice(0, 5)}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Data: {dataViagem} · Embarque fecha às {rota.horaFechoEmbarque}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Autocarro: {rota.veiculos?.nome ?? "Por atribuir"}
                         {rota.veiculos?.matricula ? ` · ${rota.veiculos.matricula}` : ""}
