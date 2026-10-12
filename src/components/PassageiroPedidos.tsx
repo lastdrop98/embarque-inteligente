@@ -56,6 +56,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
   const { data: rotasDisponiveis, isLoading: aCarregarRotas, error: erroRotas } = useQuery({
     queryKey: ["rotas-disponiveis-passageiro", dataViagem, origem, destino],
     enabled: !!dataViagem && !!origem && !!destino && origem !== destino,
+    refetchInterval: 30_000,
     queryFn: async () => {
       const { data: rotas, error } = await supabase
         .from("rotas")
@@ -203,7 +204,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
       <Card>
         <CardHeader>
-          <CardTitle>Solicitar viagem</CardTitle>
+          <CardTitle>Reservar viagem</CardTitle>
           <p className="text-sm text-muted-foreground">
             Passageiro: <strong>{passageiro.nome}</strong> · ID: <strong>{passageiro.id.slice(0, 8).toUpperCase()}</strong>
           </p>
