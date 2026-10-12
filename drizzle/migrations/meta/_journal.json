@@ -50,6 +50,13 @@
       "when": 1790079300000,
       "tag": "0006_reparar_responsavel_grupo_e_rota",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791806400000,
+      "tag": "0007_operator_route_dates",
+      "breakpoints": true
     }
   ]
 }
