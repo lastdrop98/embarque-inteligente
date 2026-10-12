@@ -217,15 +217,16 @@ BEGIN
   SELECT id INTO _passageiro_id FROM public.passageiros WHERE user_id = _uid LIMIT 1;
   IF _passageiro_id IS NULL THEN RAISE EXCEPTION 'Não existe um perfil de passageiro associado à sua conta.'; END IF;
 
-  SELECT r.id, r.estado, r.data_viagem, r.hora_inicio, r.hora_fim, v.lugares AS capacidade
+  SELECT r.id, r.estado, r.data_viagem, r.hora_inicio, r.hora_fim, r.veiculo_id, v.lugares AS capacidade
     INTO _rota
     FROM public.rotas r
     LEFT JOIN public.veiculos v ON v.id = r.veiculo_id
     WHERE r.id = _rota_id
     FOR UPDATE OF r;
-  IF NOT FOUND OR _rota.estado <> 'agendada' OR _rota.data_viagem IS NULL
+  IF NOT FOUND THEN RAISE EXCEPTION 'Esta viagem já não está disponível para reserva.'; END IF;
+  IF _rota.estado <> 'agendada' OR _rota.data_viagem IS NULL OR _rota.veiculo_id IS NULL
      OR _rota.data_viagem < (now() AT TIME ZONE 'Africa/Maputo')::date THEN
-    RAISE EXCEPTION 'Esta viagem já não está disponível para reserva.';
+    RAISE EXCEPTION 'Esta viagem ainda não está agendada com data e autocarro disponíveis.';
   END IF;
 
   SELECT * INTO _origem FROM public.paragens
