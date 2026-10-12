@@ -29,6 +29,25 @@ USING (
       AND r.data_viagem >= (now() AT TIME ZONE 'Africa/Maputo')::date
   )
 );
+CREATE TABLE IF NOT EXISTS public.notificacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  tipo text NOT NULL DEFAULT 'info',
+  mensagem text NOT NULL,
+  lida boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS notificacoes_user_idx ON public.notificacoes(user_id, created_at DESC);
+GRANT SELECT, UPDATE ON public.notificacoes TO authenticated;
+GRANT ALL ON public.notificacoes TO service_role;
+ALTER TABLE public.notificacoes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS notificacoes_select ON public.notificacoes;
+CREATE POLICY notificacoes_select ON public.notificacoes FOR SELECT TO authenticated
+  USING (user_id = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+DROP POLICY IF EXISTS notificacoes_update_own ON public.notificacoes;
+CREATE POLICY notificacoes_update_own ON public.notificacoes FOR UPDATE TO authenticated
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
 CREATE OR REPLACE FUNCTION public.reservar_viagem_passageiro(
   _rota_id uuid,
   _paragem_embarque_id uuid,
