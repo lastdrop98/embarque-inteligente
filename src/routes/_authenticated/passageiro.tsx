@@ -275,16 +275,18 @@ function FormularioAvaliacao({ viagemId, passageiroId }: { viagemId: string; pas
   return (
     <Card>
       <CardContent className="space-y-3 p-4">
-        <p className="text-sm font-medium">Como foi a viagem?</p>
+        <p className="text-sm font-medium">Avaliação e comentário</p>
+        <p className="text-xs text-muted-foreground">Avalie de 1 a 5 estrelas e partilhe a sua experiência.</p>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
               type="button"
+              aria-label={`Avaliar com ${n} estrela(s)`}
               onClick={() => setNota(n)}
-              className={`h-8 w-8 rounded-md border text-sm font-semibold ${n <= nota ? "bg-primary text-primary-foreground" : "bg-background"}`}
+              className={`h-9 w-9 rounded-md border text-xl font-semibold ${n <= nota ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
             >
-              {n}
+              {n <= nota ? "★" : "☆"}
             </button>
           ))}
         </div>
