@@ -29,10 +29,11 @@ const ESTADOS_PEDIDO: Record<string, { label: string; variant: "default" | "seco
 
 export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passageiro; userId: string }) {
   const qc = useQueryClient();
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date());
   const [dataViagem, setDataViagem] = useState(hoje);
   const [origem, setOrigem] = useState("");
   const [destino, setDestino] = useState("");
+  const [rotaId, setRotaId] = useState("");
 
   const { data: pontos } = useQuery({
     queryKey: ["pontos-embarque-predefinidos"],
@@ -52,12 +53,68 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     },
   });
 
+  const { data: rotasDisponiveis, isLoading: aCarregarRotas, error: erroRotas } = useQuery({
+    queryKey: ["rotas-disponiveis-passageiro", dataViagem, origem, destino],
+    enabled: !!dataViagem && !!origem && !!destino && origem !== destino,
+    queryFn: async () => {
+      const { data: rotas, error } = await supabase
+        .from("rotas")
+        .select("id, nome, data_viagem, hora_inicio, hora_fim, estado, veiculos(nome, matricula, lugares), paragens(id, nome, ordem, hora_prevista)")
+        .eq("data_viagem", dataViagem)
+        .eq("estado", "agendada")
+        .order("hora_inicio");
+      if (error) throw error;
+
+      const normalizarPonto = (valor: string) =>
+        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+      const candidatas = (rotas ?? []).flatMap((rota) => {
+        const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
+        const origemIdx = paragens.findIndex((p) => normalizarPonto(p.nome) === normalizarPonto(origem));
+        const destinoIdx = paragens.findIndex((p) => normalizarPonto(p.nome) === normalizarPonto(destino));
+        if (origemIdx < 0 || destinoIdx <= origemIdx) return [];
+        const embarque = paragens[origemIdx];
+        const desembarque = paragens[destinoIdx];
+        const horaEmbarque = embarque.hora_prevista ?? rota.hora_inicio;
+        const horaChegada = desembarque.hora_prevista ?? rota.hora_fim;
+        if (!horaEmbarque || !horaChegada) return [];
+        const instanteEmbarque = new Date(`${dataViagem}T${horaEmbarque.slice(0, 5)}:00+02:00`).getTime();
+        return [{ ...rota, embarque, desembarque, horaEmbarque, horaChegada, instanteEmbarque }];
+      });
+
+      if (!candidatas.length) return [];
+      const ids = candidatas.map((r) => r.id);
+      const { data: viagensExistentes, error: erroViagens } = await supabase
+        .from("viagens_passageiro")
+        .select("rota_id, estado")
+        .in("rota_id", ids)
+        .in("estado", ["pendente", "a_bordo", "desembarcado"]);
+      if (erroViagens) throw erroViagens;
+      const ocupacao = new Map<string, number>();
+      for (const viagem of viagensExistentes ?? []) {
+        ocupacao.set(viagem.rota_id, (ocupacao.get(viagem.rota_id) ?? 0) + 1);
+      }
+
+      return candidatas.map((rota) => {
+        const capacidade = rota.veiculos?.lugares ?? null;
+        const lugaresLivres = capacidade == null ? null : Math.max(0, capacidade - (ocupacao.get(rota.id) ?? 0));
+        return {
+          ...rota,
+          lugaresLivres,
+          lotada: lugaresLivres !== null && lugaresLivres <= 0,
+          embarqueFechado: Date.now() >= rota.instanteEmbarque - 10 * 60 * 1000,
+        };
+      });
+    },
+  });
+
+  const rotaSelecionada = rotasDisponiveis?.find((r) => r.id === rotaId);
+
   const { data: pedidos } = useQuery({
     queryKey: ["meus-pedidos-transporte", passageiro.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedidos_transporte")
-        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at")
+        .select("id, titulo, data_viagem, hora, origem, destino, num_passageiros, tipo_viatura, observacoes, estado, rota_id, created_at, rotas(nome, veiculos(nome, matricula))")
         .eq("passageiro_id", passageiro.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -69,6 +126,9 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     mutationFn: async () => {
       if (!origem || !destino) throw new Error("Escolha a origem e o destino.");
       if (origem === destino) throw new Error("A origem e o destino devem ser diferentes.");
+      if (!rotaSelecionada) throw new Error("Escolha uma das viagens disponíveis.");
+      if (rotaSelecionada.lotada) throw new Error("Esta viagem já não tem lugares disponíveis.");
+      if (rotaSelecionada.embarqueFechado) throw new Error("O embarque fecha 10 minutos antes da partida.");
 
       const { data: existentes, error: erroExistente } = await supabase
         .from("pedidos_transporte")
@@ -86,7 +146,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         .insert({
           titulo: `Viagem de ${passageiro.nome} — ${dataViagem}`,
           data_viagem: dataViagem,
-          hora: null,
+          hora: rotaSelecionada.horaEmbarque.slice(0, 5),
           origem: origem.trim(),
           destino: destino.trim(),
           num_passageiros: 1,
@@ -95,6 +155,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
           categoria: passageiro.categoria,
           passageiro_id: passageiro.id,
           criado_por: userId,
+          rota_id: rotaSelecionada.id,
           estado: "submetido",
         })
         .select("id")
@@ -112,6 +173,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
       toast.success("Pedido de viagem enviado");
       setOrigem("");
       setDestino("");
+      setRotaId("");
       qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -159,6 +221,9 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     !!origem &&
     !!destino &&
     origem !== destino &&
+    !!rotaSelecionada &&
+    !rotaSelecionada.lotada &&
+    !rotaSelecionada.embarqueFechado &&
     !criarPedido.isPending &&
     !pedidos?.some((p) => ["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"].includes(p.estado));
 
@@ -177,23 +242,64 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
             <Label>Data da viagem</Label>
-            <Input type="date" min={hoje} value={dataViagem} onChange={(e) => setDataViagem(e.target.value)} />
+            <Input type="date" min={hoje} value={dataViagem} onChange={(e) => { setDataViagem(e.target.value); setRotaId(""); }} />
           </div>
           <div className="space-y-2">
             <Label>Ponto de origem</Label>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={origem} onChange={(e) => setOrigem(e.target.value)}>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={origem} onChange={(e) => { setOrigem(e.target.value); setRotaId(""); }}>
               <option value="">Escolha o ponto</option>
               {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
             </select>
           </div>
           <div className="space-y-2">
             <Label>Destino</Label>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={destino} onChange={(e) => setDestino(e.target.value)}>
+            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={destino} onChange={(e) => { setDestino(e.target.value); setRotaId(""); }}>
               <option value="">Escolha o destino</option>
               {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
             </select>
           </div>
-          <div className="md:col-span-3">
+          <div className="md:col-span-3 space-y-3">
+            <div className="space-y-1">
+              <Label>Viagens disponíveis definidas pelo operador</Label>
+              {!origem || !destino || origem === destino ? (
+                <p className="text-xs text-muted-foreground">Seleccione a data, a origem e um destino diferente para consultar as viagens.</p>
+              ) : aCarregarRotas ? (
+                <p className="text-xs text-muted-foreground">A procurar horários disponíveis…</p>
+              ) : erroRotas ? (
+                <p className="text-xs text-destructive">Não foi possível consultar as rotas: {(erroRotas as Error).message}</p>
+              ) : rotasDisponiveis?.length ? (
+                <div className="grid gap-2">
+                  {rotasDisponiveis.map((rota) => (
+                    <button
+                      key={rota.id}
+                      type="button"
+                      disabled={rota.lotada || rota.embarqueFechado}
+                      onClick={() => setRotaId(rota.id)}
+                      className={`w-full rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${rotaId === rota.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-primary/50"}`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-semibold">{rota.nome}</span>
+                        <Badge variant={rota.embarqueFechado || rota.lotada ? "destructive" : "secondary"}>
+                          {rota.embarqueFechado ? "Embarque fechado" : rota.lotada ? "Lotada" : "Disponível"}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm">{rota.horaEmbarque.slice(0, 5)} — {rota.horaChegada.slice(0, 5)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Autocarro: {rota.veiculos?.nome ?? "Por atribuir"}
+                        {rota.veiculos?.matricula ? ` · ${rota.veiculos.matricula}` : ""}
+                        {rota.lugaresLivres !== null ? ` · ${rota.lugaresLivres} lugar(es) livre(s)` : ""}
+                      </p>
+                      {rotaId === rota.id && <p className="mt-1 text-xs font-semibold text-primary">Viagem seleccionada</p>}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+                  Não existem viagens agendadas para este trajecto e data. O operador precisa de configurar a rota e marcar o estado como “Agendada”.
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">O horário, a rota e o autocarro são definidos pelo operador. O embarque fecha 10 minutos antes da partida.</p>
             <Button disabled={!podeEnviar} onClick={() => criarPedido.mutate()}>
               {criarPedido.isPending ? "A enviar..." : "Solicitar viagem"}
             </Button>
@@ -236,6 +342,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                   <Badge variant={estado.variant}>{estado.label}</Badge>
                 </div>
                 <p className="mt-2 text-sm">{pedido.origem} → {pedido.destino}</p>
+                {pedido.rotas?.nome && <p className="mt-1 text-xs text-muted-foreground">Rota seleccionada: {pedido.rotas.nome}{pedido.hora ? ` · ${pedido.hora.slice(0, 5)}` : ""}</p>}
                 <p className="text-xs text-muted-foreground">{pedido.num_passageiros} passageiro(s){pedido.tipo_viatura ? ` · ${pedido.tipo_viatura}` : ""}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {["rascunho", "submetido", "em_analise", "aprovado", "alocado", "agendado"].includes(pedido.estado) && (
