@@ -29,6 +29,13 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
   const [qr, setQr] = useState("");
   const [copiado, setCopiado] = useState(false);
   const info = ESTADO_INFO[dados.estado] ?? { rotulo: dados.estado, cor: "bg-secondary" };
+  const horaFechoEmbarque = (() => {
+    if (!dados.horaEmbarque) return null;
+    const partes = dados.horaEmbarque.slice(0, 5).split(":").map(Number);
+    if (partes.length !== 2 || partes.some((n) => !Number.isFinite(n))) return null;
+    const total = (partes[0] * 60 + partes[1] - 10 + 24 * 60) % (24 * 60);
+    return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  })();
 
   useEffect(() => {
     QRCode.toDataURL(dados.token, { width: 480, margin: 1, color: { dark: "#1b2540", light: "#ffffff" } }).then(setQr);
@@ -73,7 +80,10 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
         </div>
                 {!compacto && ["pendente", "a_bordo"].includes(dados.estado) && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-xs font-medium text-amber-800 dark:text-amber-300">
-            O embarque fecha 10 minutos antes da partida. Chegue à paragem com antecedência.
+            {horaFechoEmbarque
+              ? `O embarque fecha às ${horaFechoEmbarque}, 10 minutos antes da partida.`
+              : "O embarque fecha 10 minutos antes da partida."}{" "}
+            Chegue à paragem com antecedência.
           </div>
         )}
         <div className="mx-auto max-w-xs rounded-2xl border bg-muted/40 p-3">
