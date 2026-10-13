@@ -58,48 +58,31 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     enabled: !!dataViagem && !!origem && !!destino && origem !== destino,
     refetchInterval: 30_000,
     queryFn: async () => {
-      const { data: rotas, error } = await supabase
-        .from("rotas")
-        .select("id, nome, data_viagem, hora_inicio, hora_fim, estado, veiculo_id, veiculos(nome, matricula, lugares), paragens(id, nome, ordem, hora_prevista)")
-        .eq("data_viagem", dataViagem)
-        .eq("estado", "agendada")
-        .not("veiculo_id", "is", null)
-        .order("hora_inicio");
-      if (error) throw error;
-
-      const normalizarPonto = (valor: string) =>
-        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-      const candidatas = (rotas ?? []).flatMap((rota) => {
-        const paragens = [...(rota.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
-        const origemIdx = paragens.findIndex((p) => normalizarPonto(p.nome) === normalizarPonto(origem));
-        const destinoIdx = paragens.findIndex((p) => normalizarPonto(p.nome) === normalizarPonto(destino));
-        if (origemIdx < 0 || destinoIdx <= origemIdx) return [];
-        const embarque = paragens[origemIdx];
-        const desembarque = paragens[destinoIdx];
-        const estimarHora = (ordem: number) => {
-          if (!rota.hora_inicio || !rota.hora_fim) return null;
-          const minutos = (valor: string) => Number(valor.slice(0, 2)) * 60 + Number(valor.slice(3, 5));
-          const inicioMin = minutos(rota.hora_inicio);
-          let fimMin = minutos(rota.hora_fim);
-          if (fimMin < inicioMin) fimMin += 24 * 60;
-          const frac = paragens.length > 1 ? (ordem - 1) / (paragens.length - 1) : 0;
-          const total = Math.round(inicioMin + (fimMin - inicioMin) * frac) % (24 * 60);
-          return String(Math.floor(total / 60)).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0");
-        };
-        const horaEmbarque = embarque.hora_prevista ?? estimarHora(embarque.ordem) ?? rota.hora_inicio;
-        const horaChegada = desembarque.hora_prevista ?? estimarHora(desembarque.ordem) ?? rota.hora_fim;
-        if (!horaEmbarque || !horaChegada) return [];
-        const horaEmbarqueMin = Number(horaEmbarque.slice(0, 2)) * 60 + Number(horaEmbarque.slice(3, 5));
-        const horaFechoMin = (horaEmbarqueMin - 10 + 24 * 60) % (24 * 60);
-        const horaFechoEmbarque = `${String(Math.floor(horaFechoMin / 60)).padStart(2, "0")}:${String(horaFechoMin % 60).padStart(2, "0")}`;
-        const instanteEmbarque = new Date(`${dataViagem}T${horaEmbarque.slice(0, 5)}:00+02:00`).getTime();
-        return [{ ...rota, embarque, desembarque, horaEmbarque, horaChegada, horaFechoEmbarque, instanteEmbarque }];
+      // A lista é calculada no servidor: só viagens agendadas, futuras, com lugares e
+      // com a origem antes do destino na ordem das paragens.
+      const { data, error } = await supabase.rpc("viagens_disponiveis_passageiro", {
+        _data: dataViagem,
+        _origem: origem,
+        _destino: destino,
       });
-
-      return candidatas.map((rota) => ({
-        ...rota,
-        embarqueFechado: Date.now() >= rota.instanteEmbarque - 10 * 60 * 1000,
-      }));
+      if (error) throw error;
+      const hhmm = (d: Date) =>
+        new Intl.DateTimeFormat("pt-PT", { timeZone: "Africa/Maputo", hour: "2-digit", minute: "2-digit" }).format(d);
+      return (data ?? []).map((v) => {
+        const fecho = new Date(v.embarque_fecha_em);
+        return {
+          id: v.rota_id,
+          nome: v.rota_nome,
+          embarque: { id: v.paragem_embarque_id, nome: v.paragem_embarque },
+          desembarque: { id: v.paragem_desembarque_id, nome: v.paragem_desembarque },
+          horaEmbarque: v.hora_embarque ?? "",
+          horaChegada: v.hora_chegada ?? "",
+          horaFechoEmbarque: hhmm(fecho),
+          veiculos: { nome: v.veiculo, matricula: v.matricula, lugares: v.lugares },
+          lugaresLivres: v.lugares_livres,
+          embarqueFechado: Date.now() >= fecho.getTime(),
+        };
+      });
     },
   });
 
