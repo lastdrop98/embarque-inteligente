@@ -39,14 +39,14 @@ function OperadorPage() {
         <p className="text-sm text-muted-foreground">Rotas, paragens, passageiros e bilhetes QR.</p>
       </div>
       <Tabs defaultValue="rotas">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
-          <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-          <TabsTrigger value="rotas">Rotas</TabsTrigger>
-          <TabsTrigger value="veiculos">Veículos</TabsTrigger>
-          <TabsTrigger value="delegacoes">Delegações</TabsTrigger>
-          <TabsTrigger value="passageiros">Passageiros</TabsTrigger>
-          <TabsTrigger value="viagens">Atribuições</TabsTrigger>
-          <TabsTrigger value="avaliacoes">Avaliações</TabsTrigger>
+        <TabsList className="flex h-auto w-full flex-wrap items-stretch justify-start gap-1 p-1">
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="pedidos">Pedidos</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="rotas">Rotas</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="veiculos">Veículos</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="delegacoes">Delegações</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="passageiros">Passageiros</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="viagens">Atribuições</TabsTrigger>
+          <TabsTrigger className="min-w-0 flex-1 basis-[calc(50%-0.25rem)] whitespace-nowrap px-2 text-xs sm:basis-auto sm:px-3 sm:text-sm" value="avaliacoes">Avaliações</TabsTrigger>
         </TabsList>
         <TabsContent value="pedidos" className="mt-6"><PedidosOperador /></TabsContent>
         <TabsContent value="rotas" className="mt-6"><Rotas /></TabsContent>
