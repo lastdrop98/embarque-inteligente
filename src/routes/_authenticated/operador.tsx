@@ -338,6 +338,7 @@ type RotaRow = {
   nome: string;
   hora_inicio: string | null;
   hora_fim: string | null;
+  data_servico: string | null;
   hora_partida_real: string | null;
   hora_chegada_real: string | null;
   estado: string;
@@ -368,6 +369,31 @@ function RotaCard({ rota }: { rota: RotaRow }) {
   const [hora, setHora] = useState("");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
+  const [dataServicoEdit, setDataServicoEdit] = useState(rota.data_servico ?? "");
+  const [inicioEdit, setInicioEdit] = useState(rota.hora_inicio?.slice(0, 5) ?? "");
+  const [fimEdit, setFimEdit] = useState(rota.hora_fim?.slice(0, 5) ?? "");
+
+  const guardarHorario = useMutation({
+    mutationFn: async () => {
+      if (!dataServicoEdit || !inicioEdit) {
+        throw new Error("Indique a data da viagem e a hora de partida.");
+      }
+      if (["embarque_aberto", "embarque_fechado", "em_curso", "concluida", "cancelada"].includes(rota.estado)) {
+        throw new Error("A data e o horário já não podem ser alterados nesta fase da rota.");
+      }
+      const { error } = await supabase.from("rotas").update({
+        data_servico: dataServicoEdit,
+        hora_inicio: inicioEdit,
+        hora_fim: fimEdit || null,
+      }).eq("id", rota.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Data e horário da rota actualizados");
+      invalidate("rotas", "rotas-disponiveis", "pontos-disponiveis");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const addParagem = useMutation({
     mutationFn: async () => {
