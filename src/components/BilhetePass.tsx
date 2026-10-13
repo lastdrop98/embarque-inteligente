@@ -11,6 +11,7 @@ export type DadosBilhete = {
   paragemEmbarque?: string | null;
   horaEmbarque?: string | null;
   paragemDesembarque?: string | null;
+  dataViagem?: string | null;
   estado: "pendente" | "a_bordo" | "concluida" | "recusada" | string;
   emitidoEm?: string | null;
 };
@@ -53,6 +54,12 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Desembarque</p>
             <p className="font-medium">{dados.paragemDesembarque ?? "—"}</p>
           </div>
+          {dados.dataViagem && (
+            <div className="col-span-2 border-t pt-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Data da viagem</p>
+              <p className="font-medium">{new Date(dados.dataViagem + "T12:00:00").toLocaleDateString("pt-PT", { dateStyle: "long" })}</p>
+            </div>
+          )}
           {dados.emitidoEm && (
             <div className="col-span-2 border-t pt-2">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Bilhete emitido em</p>
@@ -66,6 +73,11 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
             </div>
           )}
         </div>
+        {dados.estado === "pendente" && (
+          <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-900">
+            O embarque fecha 10 minutos antes da hora de partida. Chegue à paragem com antecedência.
+          </p>
+        )}
         <p className="font-mono text-[10px] text-muted-foreground">{dados.token}</p>
       </CardContent>
     </Card>
