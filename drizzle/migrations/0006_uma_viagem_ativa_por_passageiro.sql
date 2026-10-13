@@ -12,6 +12,14 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- Allow lifecycle updates on an already-active booking (e.g. pending -> boarded),
+  -- including legacy records that need manual reconciliation.
+  IF TG_OP = 'UPDATE'
+     AND OLD.passageiro_id = NEW.passageiro_id
+     AND OLD.estado::text IN ('pendente', 'a_bordo') THEN
+    RETURN NEW;
+  END IF;
+
   -- Serialize active-trip checks per passenger to prevent concurrent double bookings.
   PERFORM pg_advisory_xact_lock(hashtext(NEW.passageiro_id::text)::bigint);
 
