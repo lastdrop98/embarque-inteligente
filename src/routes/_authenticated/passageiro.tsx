@@ -61,7 +61,7 @@ function Conteudo({ userId }: { userId: string }) {
       const { data, error } = await supabase
         .from("viagens_passageiro")
         .select(
-          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
+          "id, estado, token_qr, created_at, passageiros(nome), rotas(nome, data_servico, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at)), embarque:paragens!viagens_passageiro_paragem_embarque_id_fkey(id, nome, ordem, hora_prevista, latitude, longitude), desembarque:paragens!viagens_passageiro_paragem_desembarque_id_fkey(nome)",
         )
         .eq("passageiro_id", passageiro!.id)
         .order("created_at", { ascending: false });
