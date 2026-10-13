@@ -131,6 +131,8 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
       toast.success("Viagem confirmada! O bilhete já está disponível na sua área.");
       setRotaId("");
       qc.invalidateQueries({ queryKey: ["minhas-viagens", passageiro.id] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
+      qc.invalidateQueries({ queryKey: ["meus-pedidos-transporte", passageiro.id] });
       qc.invalidateQueries({ queryKey: ["viagens-ativas-passageiro", passageiro.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -245,6 +247,9 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                       <p className="mt-1 text-sm">{rota.horaEmbarque.slice(0, 5)} — {rota.horaChegada.slice(0, 5)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         Data: {dataViagem} · Embarque fecha às {rota.horaFechoEmbarque}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Lugares disponíveis: {rota.lugaresLivres} de {rota.veiculos.lugares} · {rota.embarque.nome} → {rota.desembarque.nome}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Autocarro: {rota.veiculos?.nome ?? "Por atribuir"}
