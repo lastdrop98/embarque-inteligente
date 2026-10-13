@@ -7,6 +7,7 @@
     { "idx": 2, "version": "7", "when": 1790061386785, "tag": "0002_notificar_novo_pedido_e_delete_notificacoes", "breakpoints": true },
     { "idx": 3, "version": "7", "when": 1790578980234, "tag": "0003_notificacoes_incidentes_e_motorista", "breakpoints": true },
     { "idx": 4, "version": "7", "when": 1791816593719, "tag": "0004_reserva_viagem_passageiro_e_seguranca", "breakpoints": true },
-    { "idx": 5, "version": "7", "when": 1791882000000, "tag": "0005_avaliacoes_viagem", "breakpoints": true }
+    { "idx": 5, "version": "7", "when": 1791882000000, "tag": "0005_avaliacoes_viagem", "breakpoints": true },
+    { "idx": 6, "version": "7", "when": 1791907200000, "tag": "0006_compat_data_viagem_rotas", "breakpoints": true }
   ]
 }
