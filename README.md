@@ -48,3 +48,8 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+
+<!-- Lovable preview refresh marker: 2026-09-28 -->
+
+<!-- Branding refresh -->

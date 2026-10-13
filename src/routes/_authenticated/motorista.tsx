@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { Activity, AlertTriangle, BusFront, CircleDot, Clock3, History, Navigation, ScanLine, Trash2, Wifi } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ import MapaVeiculos, { type PosVeiculo } from "@/components/MapaVeiculos";
 export const Route = createFileRoute("/_authenticated/motorista")({
   head: () => ({
     meta: [
-      { title: "Ecrã do Motorista — Rotas & Embarque QR" },
+      { title: "Ecrã do Motorista — PickApp Mobility" },
       { name: "description", content: "Rota paragem a paragem e validação de embarques por QR Code." },
       { property: "og:title", content: "Ecrã do Motorista" },
       { property: "og:description", content: "Rota paragem a paragem e validação de embarques por QR Code." },
@@ -44,6 +45,7 @@ function MotoristaPage() {
   const [tipo, setTipo] = useState<"embarque" | "desembarque">("embarque");
   const [resultado, setResultado] = useState<ResultadoScan | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [acao, setAcao] = useState<string | null>(null);
   const [emServico, setEmServico] = useState(false);
   const [incidenteAberto, setIncidenteAberto] = useState<string | null>(null);
   const [descIncidente, setDescIncidente] = useState("");
@@ -59,7 +61,7 @@ function MotoristaPage() {
 
       const { data, error } = await supabase
         .from("rotas")
-        .select("id, nome, estado, motorista_id, veiculo_id, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
+        .select("id, nome, estado, motorista_id, veiculo_id, created_at, hora_inicio, hora_fim, veiculos(id, nome, lugares, latitude, longitude, estado, posicao_updated_at), paragens(id, nome, ordem, hora_prevista, latitude, longitude)")
         .eq("motorista_id", authData.user.id)
         .order("created_at");
       if (error) throw error;
@@ -70,9 +72,47 @@ function MotoristaPage() {
 
   // Mostra por defeito apenas rotas operacionais. Evita seleccionar automaticamente
   // uma rota antiga já concluída/cancelada e apresentar uma mensagem enganadora.
+  const { data: historicosOcultos } = useQuery({
+    queryKey: ["historico-ocultos-motorista"],
+    queryFn: async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return new Set<string>();
+      const { data, error } = await supabase
+        .from("historico_ocultos")
+        .select("entidade_id")
+        .eq("user_id", authData.user.id)
+        .eq("entidade_tipo", "rota");
+      if (error) throw error;
+      return new Set((data ?? []).map((item) => item.entidade_id));
+    },
+  });
+
   const rotasOperacionais = (rotas ?? []).filter((r) =>
     ["rascunho", "agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(r.estado),
   );
+
+  const rotasHistorico = (rotas ?? []).filter((r) =>
+    ["concluida", "cancelada"].includes(r.estado) && !historicosOcultos?.has(r.id),
+  );
+
+  async function removerDoHistorico(rotaHistoricaId: string) {
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user) return;
+    const { error } = await supabase.from("historico_ocultos").upsert(
+      {
+        user_id: authData.user.id,
+        entidade_tipo: "rota",
+        entidade_id: rotaHistoricaId,
+      },
+      { onConflict: "user_id,entidade_tipo,entidade_id" },
+    );
+    if (error) {
+      toast.error("Não foi possível remover a viagem do histórico.");
+      return;
+    }
+    await qc.invalidateQueries({ queryKey: ["historico-ocultos-motorista"] });
+    toast.success("Viagem removida do seu histórico.");
+  }
   const rota = rotasOperacionais.find((r) => r.id === rotaId) ?? rotasOperacionais[0];
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const proximaParagem = paragemId ? paragens.find((p) => p.id === paragemId) : paragens[0];
@@ -228,12 +268,38 @@ function MotoristaPage() {
 
   async function submeter(valor?: string) {
     const t = (valor ?? token).trim();
-    if (!t || !rota) return;
-    const r = await validar({ data: { token: t, rotaId: rota.id, paragemId, tipo } });
-    setResultado(r);
-    setToken("");
-    qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
+    if (!t || !rota || acao) return;
+    setAcao("validar");
+    try {
+      const r = await validar({ data: { token: t, rotaId: rota.id, paragemId, tipo } });
+      setResultado(r);
+      setToken("");
+      await qc.invalidateQueries({ queryKey: ["viagens-rota", rota.id] });
+      if (r.aprovado) toast.success("Embarque validado.");
+      else toast.error(r.motivo ?? "Leitura recusada.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível validar o código.");
+    } finally {
+      setAcao(null);
+    }
   }
+
+  const { data: meusIncidentes } = useQuery({
+    queryKey: ["meus-incidentes-motorista", rota?.id],
+    enabled: !!rota?.id,
+    queryFn: async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || !rota?.id) return [];
+      const { data, error } = await supabase
+        .from("incidentes")
+        .select("id, tipo, descricao, estado, created_at")
+        .eq("motorista_id", authData.user.id)
+        .eq("rota_id", rota.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   // ---- Incidentes ----
   const reportarIncidente = useMutation({
@@ -257,17 +323,23 @@ function MotoristaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="animate-premium-in flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Ecrã do Motorista</h1>
-          <p className="text-sm text-muted-foreground">Rota atribuída e validação de embarques.</p>
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm">
+            <Wifi className="h-3.5 w-3.5 text-emerald-600" />
+            Operação em tempo real
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Área do Motorista</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Rota, embarques e viagem num só lugar.</p>
         </div>
         {emServico ? (
-          <Button variant="destructive" size="lg" className="h-12 min-w-[160px]" onClick={terminarTurno}>
+          <Button variant="destructive" size="lg" className="h-12 min-w-[180px]" onClick={terminarTurno}>
+            <CircleDot className="h-4 w-4 animate-pulse" />
             Terminar turno
           </Button>
         ) : (
-          <Button size="lg" className="h-12 min-w-[160px]" onClick={iniciarTurno}>
+          <Button size="lg" className="h-12 min-w-[180px]" onClick={iniciarTurno}>
+            <Navigation className="h-4 w-4" />
             Iniciar turno
           </Button>
         )}
@@ -330,7 +402,12 @@ function MotoristaPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Leitura de QR Code</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ScanLine className="h-5 w-5 text-primary" />
+                Leitura de QR Code
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {scanning
@@ -343,7 +420,7 @@ function MotoristaPage() {
                   <Label>Ou introduza o código manualmente</Label>
                   <Input className="h-12" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token do bilhete" />
                 </div>
-                <Button variant="secondary" className="h-12" disabled={!token} onClick={() => submeter()}>Validar</Button>
+                <Button variant="secondary" className="h-12" aria-busy={acao === "validar"} disabled={!token || !!acao} onClick={() => void submeter()}>Validar</Button>
               </div>
 
               {resultado && (
@@ -361,7 +438,12 @@ function MotoristaPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-base">Reportar incidente</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Reportar incidente
+              </CardTitle>
+            </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {TIPOS_INCIDENTE.map((t) => (
@@ -382,7 +464,7 @@ function MotoristaPage() {
                     value={descIncidente}
                     onChange={(e) => setDescIncidente(e.target.value)}
                   />
-                  <Button disabled={reportarIncidente.isPending} onClick={() => reportarIncidente.mutate()}>
+                  <Button aria-busy={reportarIncidente.isPending} disabled={reportarIncidente.isPending} onClick={() => reportarIncidente.mutate()}>
                     Enviar reporte de "{incidenteAberto}"
                   </Button>
                 </div>
@@ -391,6 +473,68 @@ function MotoristaPage() {
           </Card>
 
           <Card>
+            <CardHeader><CardTitle className="text-base">Histórico do motorista</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {meusIncidentes?.length ? meusIncidentes.map((i) => (
+                <div key={i.id} className="rounded-md border px-3 py-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={i.estado === "aberto" ? "destructive" : "secondary"}>{i.estado}</Badge>
+                    <span className="font-medium">{i.tipo}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{new Date(i.created_at).toLocaleString("pt-PT")}</span>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">{i.descricao}</p>
+                </div>
+              )) : <p className="text-sm text-muted-foreground">Sem incidentes registados nesta rota.</p>}
+            </CardContent>
+          </Card>
+
+                    <Card className="animate-premium-in overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <History className="h-5 w-5 text-primary" />
+                Histórico de viagens
+              </CardTitle>
+              <Badge variant="secondary">{rotasHistorico.length}</Badge>
+            </CardHeader>
+            <CardContent>
+              {rotasHistorico.length ? (
+                <div className="space-y-2">
+                  {rotasHistorico.slice(0, 8).map((r) => (
+                    <div key={r.id} className="flex flex-col gap-3 rounded-2xl border bg-muted/20 p-3 sm:flex-row sm:items-center">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <BusFront className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{r.nome}</p>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-PT") : "—"}</span>
+                          <span className="inline-flex items-center gap-1"><Activity className="h-3 w-3" />{String(r.estado).replaceAll("_", " ")}</span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                        onClick={() => void removerDoHistorico(r.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remover
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed p-8 text-center">
+                  <History className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                  <p className="mt-2 text-sm font-medium">Sem viagens anteriores</p>
+                  <p className="mt-1 text-xs text-muted-foreground">As viagens concluídas aparecerão aqui.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+<Card>
             <CardHeader><CardTitle className="text-base">Paragens</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {paragens.map((p) => {

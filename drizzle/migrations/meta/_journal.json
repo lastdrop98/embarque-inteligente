@@ -26,15 +26,50 @@
     {
       "idx": 3,
       "version": "7",
-      "when": 1790578980234,
-      "tag": "0003_notificacoes_incidentes_e_motorista",
+      "when": 1790070000000,
+      "tag": "0003_adicionar_cancelado_estado_pedido",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
-      "when": 1791816593719,
-      "tag": "0004_reserva_viagem_passageiro_e_seguranca",
+      "when": 1790071000000,
+      "tag": "0004_corrigir_pontos_cancelamento_e_limpar_pedidos",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790072000000,
+      "tag": "0005_permissoes_responsavel_e_criar_rota_operacional",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790079300000,
+      "tag": "0006_reparar_responsavel_grupo_e_rota",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791806400000,
+      "tag": "0007_operator_route_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791809700000,
+      "tag": "0008_avaliacoes_viagem",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791813300000,
+      "tag": "0009_reconciliar_seguranca_avaliacoes",
       "breakpoints": true
     }
   ]
