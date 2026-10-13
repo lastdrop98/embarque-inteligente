@@ -175,18 +175,27 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const podeEnviar =
-    dataViagem >= hoje &&
-    !!origem &&
-    !!destino &&
-    origem !== destino &&
-    !!rotaSelecionada &&
-    !rotaSelecionada.embarqueFechado &&
-    !aCarregarViagensAtivas &&
-    !erroViagensAtivas &&
-    !viagensAtivas?.length &&
-    !confirmarViagem.isPending &&
-    !pedidos?.some((p) => ["rascunho", "submetido", "em_analise", "aprovado", "alocado"].includes(p.estado));
+  // A disponibilidade da reserva é validada pela tabela viagens_passageiro e
+  // novamente no servidor. Pedidos legados não devem bloquear esta reserva nova.
+  const motivoBloqueio = dataViagem < hoje
+    ? "Escolha uma data de hoje em diante."
+    : (!origem || !destino || origem === destino)
+      ? "Seleccione a origem e um destino diferente."
+      : !rotaSelecionada
+        ? "Seleccione uma viagem disponível na lista."
+        : rotaSelecionada.embarqueFechado
+          ? "O embarque desta viagem já fechou."
+          : aCarregarViagensAtivas
+            ? "A verificar se já tem uma viagem activa…"
+            : erroViagensAtivas
+              ? "Não foi possível verificar as suas viagens activas. Actualize a página."
+              : viagensAtivas?.length
+                ? "Já tem uma viagem activa. Conclua ou cancele-a antes de reservar outra."
+                : confirmarViagem.isPending
+                  ? "A confirmar a reserva…"
+                  : "";
+
+  const podeEnviar = !motivoBloqueio;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -267,7 +276,10 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
             </div>
             {erroViagensAtivas && <p className="text-xs text-destructive">Não foi possível verificar se já tem uma viagem activa. Actualize a página e tente novamente.</p>}
             <p className="text-xs text-muted-foreground">O horário, a rota e o autocarro são definidos pelo operador. Ao confirmar, a viagem fica registada e o bilhete QR é emitido. O embarque fecha 10 minutos antes da partida.</p>
-            <Button disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
+            {motivoBloqueio && (
+              <p role="status" className="text-xs text-muted-foreground">{motivoBloqueio}</p>
+            )}
+            <Button type="button" disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
               {confirmarViagem.isPending ? "A confirmar..." : "Confirmar viagem"}
             </Button>
           </div>

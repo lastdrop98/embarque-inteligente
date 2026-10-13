@@ -172,12 +172,22 @@ export const validarQr = createServerFn({ method: "POST" })
       if (data.paragemId && viagem.paragem_embarque_id !== data.paragemId)
         return { ...(await registar(false, viagem.id, "Paragem de embarque errada.")), passageiro: nome };
 
-      const { error } = await supabase
+      // A actualização condicional e a confirmação da linha devolvida tornam
+      // a validação idempotente: duas leituras simultâneas não podem aprovar
+      // o mesmo bilhete como se ambas tivessem efectuado o embarque.
+      const { data: actualizada, error } = await supabase
         .from("viagens_passageiro")
         .update({ estado: "a_bordo" })
         .eq("id", viagem.id)
-        .eq("estado", "pendente");
-      if (error) return { ...(await registar(false, viagem.id, "Não foi possível registar.")), passageiro: nome };
+        .eq("estado", "pendente")
+        .select("id")
+        .maybeSingle();
+      if (error || !actualizada) {
+        return {
+          ...(await registar(false, viagem.id, "Embarque não efectuado: este bilhete já foi utilizado ou o estado da reserva foi alterado. Confirme o estado antes de tentar novamente.")),
+          passageiro: nome,
+        };
+      }
       return { ...(await registar(true, viagem.id)), passageiro: nome };
     }
 
@@ -186,11 +196,20 @@ export const validarQr = createServerFn({ method: "POST" })
     if (data.paragemId && viagem.paragem_desembarque_id !== data.paragemId)
       return { ...(await registar(false, viagem.id, "Paragem de desembarque errada.")), passageiro: nome };
 
-    const { error } = await supabase
+    // Também no desembarque, confirmar que a transição condicional actualizou
+    // exactamente esta reserva evita apresentar sucesso em leituras concorrentes.
+    const { data: actualizada, error } = await supabase
       .from("viagens_passageiro")
       .update({ estado: "desembarcado" })
       .eq("id", viagem.id)
-      .eq("estado", "a_bordo");
-    if (error) return { ...(await registar(false, viagem.id, "Não foi possível registar.")), passageiro: nome };
+      .eq("estado", "a_bordo")
+      .select("id")
+      .maybeSingle();
+    if (error || !actualizada) {
+      return {
+        ...(await registar(false, viagem.id, "Desembarque não efectuado: o estado da reserva foi alterado. Actualize a lista e confirme o estado do passageiro.")),
+        passageiro: nome,
+      };
+    }
     return { ...(await registar(true, viagem.id)), passageiro: nome };
   });
