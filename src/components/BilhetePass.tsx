@@ -32,7 +32,7 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
 
   return (
     <Card className="overflow-hidden" style={{ boxShadow: "var(--shadow-panel)" }}>
-      <div className={`px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide ${info.cor}`}>
+      <div className={"px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide " + info.cor}>
         {info.rotulo}
       </div>
       <CardHeader className="text-center pb-2">
@@ -61,11 +61,17 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
           )}
           {dados.veiculo && (
             <div className="col-span-2 border-t pt-2">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Veículo</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Veículo correcto</p>
               <p className="font-medium">{dados.veiculo}</p>
             </div>
           )}
         </div>
+        {dados.estado === "pendente" && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-left text-sm">
+            <p className="font-semibold">Atenção ao horário de embarque</p>
+            <p>O embarque fecha 10 minutos antes da partida. Chegue ao ponto de embarque com antecedência.</p>
+          </div>
+        )}
         <p className="font-mono text-[10px] text-muted-foreground">{dados.token}</p>
       </CardContent>
     </Card>
