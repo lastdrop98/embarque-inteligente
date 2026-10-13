@@ -480,6 +480,7 @@ export type Database = {
         Row: {
           created_at: string
           data_servico: string | null
+          data_viagem: string | null
           distancia_km: number | null
           embarque_fechado: boolean
           estado: Database["public"]["Enums"]["estado_rota"]
@@ -500,6 +501,7 @@ export type Database = {
         Insert: {
           created_at?: string
           data_servico?: string | null
+          data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
@@ -520,6 +522,7 @@ export type Database = {
         Update: {
           created_at?: string
           data_servico?: string | null
+          data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
