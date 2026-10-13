@@ -1,7 +1,16 @@
--- Corrige divergência de segurança em bases onde 0009 não foi aplicada.
--- Não altera avaliações existentes; a verificação prévia confirmou que não há comentários > 2000 caracteres.
+-- Reconciliar integralmente as regras de segurança de avaliações no ambiente Cloud.
+-- Intencionalmente idempotente: não cria tabela nova nem altera o modelo de dados.
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'avaliacoes_nota_intervalo'
+      AND conrelid = 'public.avaliacoes'::regclass
+  ) THEN
+    ALTER TABLE public.avaliacoes
+      ADD CONSTRAINT avaliacoes_nota_intervalo CHECK (nota BETWEEN 1 AND 5);
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'avaliacoes_comentario_tamanho'
@@ -13,11 +22,24 @@ BEGIN
   END IF;
 END $$;
 
--- Normaliza nomes e regras RLS para que a base corresponda ao modelo actual.
-DROP POLICY IF EXISTS avaliacoes_insert_passageiro ON public.avaliacoes;
-DROP POLICY IF EXISTS avaliacoes_select ON public.avaliacoes;
-DROP POLICY IF EXISTS avaliacoes_insert_viagem_concluida ON public.avaliacoes;
-DROP POLICY IF EXISTS avaliacoes_select_autorizado ON public.avaliacoes;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_avaliacoes_viagem_id
+  ON public.avaliacoes (viagem_id);
+
+ALTER TABLE public.avaliacoes ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT ON public.avaliacoes TO authenticated;
+GRANT ALL ON public.avaliacoes TO service_role;
+
+DO $$
+DECLARE
+  politica record;
+BEGIN
+  FOR politica IN
+    SELECT policyname FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'avaliacoes'
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.avaliacoes', politica.policyname);
+  END LOOP;
+END $$;
 
 CREATE POLICY avaliacoes_select_autorizado ON public.avaliacoes
 FOR SELECT TO authenticated
