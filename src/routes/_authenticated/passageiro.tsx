@@ -27,7 +27,7 @@ type ViagemRow = {
   token_qr: string;
   created_at: string;
   passageiros: { nome: string } | null;
-  rotas: { nome: string; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
+  rotas: { nome: string; data_servico: string | null; veiculos: (PosVeiculo & { lugares: number }) | null } | null;
   embarque: (PosParagem & { hora_prevista: string | null }) | null;
   desembarque: { nome: string } | null;
 };
@@ -125,6 +125,7 @@ function Conteudo({ userId }: { userId: string }) {
     token: v.token_qr,
     passageiro: v.passageiros?.nome ?? "—",
     rota: v.rotas?.nome ?? "—",
+    dataViagem: v.rotas?.data_servico ?? null,
     veiculo: v.rotas?.veiculos?.nome ?? null,
     paragemEmbarque: v.embarque?.nome ?? null,
     horaEmbarque: v.embarque?.hora_prevista ?? null,
