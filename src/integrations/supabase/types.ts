@@ -480,6 +480,7 @@ export type Database = {
         Row: {
           created_at: string
           data_servico: string | null
+          data_viagem: string | null
           distancia_km: number | null
           embarque_fechado: boolean
           estado: Database["public"]["Enums"]["estado_rota"]
@@ -500,6 +501,7 @@ export type Database = {
         Insert: {
           created_at?: string
           data_servico?: string | null
+          data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
@@ -520,6 +522,7 @@ export type Database = {
         Update: {
           created_at?: string
           data_servico?: string | null
+          data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
           estado?: Database["public"]["Enums"]["estado_rota"]
@@ -708,6 +711,13 @@ export type Database = {
       }
       iniciar_rota_segura: { Args: { _rota_id: string }; Returns: Json }
       limpar_dados_apresentacao: { Args: never; Returns: Json }
+      media_avaliacoes: {
+        Args: never
+        Returns: {
+          media: number
+          total: number
+        }[]
+      }
       notificar_evento: {
         Args: {
           p_mensagem: string
@@ -735,6 +745,14 @@ export type Database = {
         }
         Returns: string
       }
+      reservar_viagem_passageiro: {
+        Args: {
+          _paragem_desembarque_id: string
+          _paragem_embarque_id: string
+          _rota_id: string
+        }
+        Returns: string
+      }
       rotas_disponiveis: {
         Args: { _data: string; _destino: string; _origem: string }
         Returns: {
@@ -742,6 +760,25 @@ export type Database = {
           hora_partida: string
           lugares_livres: number
           paragem_desembarque_id: string
+          paragem_embarque_id: string
+          rota_id: string
+          rota_nome: string
+          veiculo: string
+        }[]
+      }
+      viagens_disponiveis_passageiro: {
+        Args: { _data: string; _destino: string; _origem: string }
+        Returns: {
+          data_viagem: string
+          embarque_fecha_em: string
+          hora_chegada: string
+          hora_embarque: string
+          lugares: number
+          lugares_livres: number
+          matricula: string
+          paragem_desembarque: string
+          paragem_desembarque_id: string
+          paragem_embarque: string
           paragem_embarque_id: string
           rota_id: string
           rota_nome: string
