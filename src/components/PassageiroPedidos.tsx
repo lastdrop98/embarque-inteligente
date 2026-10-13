@@ -78,9 +78,11 @@ export function PassageiroPedidos({ passageiro }: { passageiro: Passageiro; user
         _desembarque_id: opcao.paragem_desembarque_id,
       });
       if (error) throw error;
+      return opcao;
     },
-    onSuccess: async () => {
-      toast.success("Viagem reservada. Consulte os seus bilhetes para ver os detalhes.");
+    onSuccess: async (opcao) => {
+      const horaPartida = String(opcao.hora_partida ?? "").slice(0, 5) || "por confirmar";
+      toast.success(`Viagem reservada para ${dataViagem}, partida às ${horaPartida}, autocarro ${opcao.veiculo || "a atribuir"}. O embarque fecha 10 minutos antes da partida.`);
       setRotaEscolhida(null);
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["minhas-viagens"] }),
