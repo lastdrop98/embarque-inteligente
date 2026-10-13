@@ -319,17 +319,17 @@ function Rotas() {
         throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
       }
 
-      const { data: rotaCriada, error } = await supabase.rpc("criar_rota_operacional", {
-        _nome: nome.trim() || null,
-        _veiculo_id: veiculoId || null,
-        _motorista_id: motoristaId || null,
+      const { data: rotaCriada, error } = await supabase.rpc("criar_rota_operacional", semIndefinidos({
+        _nome: nome.trim() || undefined,
+        _veiculo_id: veiculoId || undefined,
+        _motorista_id: motoristaId || undefined,
         _ponto_partida_id: partidaId,
         _ponto_chegada_id: chegadaId,
-        _paragem_id: paragemId || null,
-        _hora_inicio: inicio || null,
-        _hora_fim: fim || null,
-        _passageiros_previstos: previstos ? Number(previstos) : null,
-      });
+        _paragem_id: paragemId || undefined,
+        _hora_inicio: inicio || undefined,
+        _hora_fim: fim || undefined,
+        _passageiros_previstos: previstos ? Number(previstos) : undefined,
+      }));
       if (error) throw error;
       if (!rotaCriada) throw new Error("A rota foi criada sem devolver o identificador.");
       const { error: erroData } = await supabase.from("rotas").update({ data_viagem: dataViagem }).eq("id", rotaCriada);
@@ -962,4 +962,10 @@ function Avaliacoes() {
       )}
     </div>
   );
+}
+
+function semIndefinidos<T extends Record<string, unknown>>(o: T) {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as {
+    [K in keyof T]?: Exclude<T[K], undefined>;
+  } & { _ponto_partida_id: string; _ponto_chegada_id: string };
 }

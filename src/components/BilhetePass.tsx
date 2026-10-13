@@ -33,9 +33,20 @@ export function BilhetePass({ dados, compacto = false }: { dados: DadosBilhete; 
     if (!dados.horaEmbarque) return null;
     const partes = dados.horaEmbarque.slice(0, 5).split(":").map(Number);
     if (partes.length !== 2 || partes.some((n) => !Number.isFinite(n))) return null;
-    const total = (partes[0] * 60 + partes[1] - 10 + 24 * 60) % (24 * 60);
+    const total = ((partes[0] ?? 0) * 60 + (partes[1] ?? 0) - 10 + 24 * 60) % (24 * 60);
     return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
   })();
+
+  async function copiarCodigo() {
+    try {
+      await navigator.clipboard.writeText(dados.token);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 1500);
+    } catch {
+      /* área de transferência indisponível */
+    }
+  }
+
 
   useEffect(() => {
     QRCode.toDataURL(dados.token, { width: 480, margin: 1, color: { dark: "#1b2540", light: "#ffffff" } }).then(setQr);

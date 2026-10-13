@@ -132,17 +132,17 @@ class SafeNotifications extends Component<
   { userId: string },
   { failed: boolean }
 > {
-  state = { failed: false };
+  override state = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
-  componentDidCatch(error: unknown) {
+  override componentDidCatch(error: unknown) {
     console.error("[notificacoes] componente isolado:", error);
   }
 
-  render() {
+  override render() {
     if (this.state.failed) return null;
     return <SinoNotificacoes userId={this.props.userId} />;
   }

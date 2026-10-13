@@ -47,7 +47,7 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGrupoRoute = AuthenticatedGrupoRouteImport.update({
-  id: '/_authenticated/grupo',
+  id: '/grupo',
   path: '/grupo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
@@ -100,6 +100,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/selecionar-papel': typeof SelecionarPapelRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/grupo': typeof AuthenticatedGrupoRoute
   '/motorista': typeof AuthenticatedMotoristaRoute
   '/operador': typeof AuthenticatedOperadorRoute
   '/painel': typeof AuthenticatedPainelRoute
@@ -127,9 +128,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/grupo'
     | '/selecionar-papel'
     | '/admin'
+    | '/grupo'
     | '/motorista'
     | '/operador'
     | '/painel'
@@ -140,9 +141,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/grupo'
     | '/selecionar-papel'
     | '/admin'
+    | '/grupo'
     | '/motorista'
     | '/operador'
     | '/painel'
@@ -156,6 +157,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/selecionar-papel'
     | '/_authenticated/admin'
+    | '/_authenticated/grupo'
     | '/_authenticated/motorista'
     | '/_authenticated/operador'
     | '/_authenticated/painel'

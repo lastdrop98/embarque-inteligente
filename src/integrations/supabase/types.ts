@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -70,6 +70,30 @@ export type Database = {
         }
         Relationships: []
       }
+      historico_ocultos: {
+        Row: {
+          created_at: string
+          entidade_id: string
+          entidade_tipo: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entidade_id: string
+          entidade_tipo: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entidade_id?: string
+          entidade_tipo?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       incidentes: {
         Row: {
           created_at: string
@@ -114,6 +138,8 @@ export type Database = {
           id: string
           lida: boolean
           mensagem: string
+          referencia_id: string | null
+          referencia_tipo: string | null
           tipo: string
           user_id: string
         }
@@ -122,6 +148,8 @@ export type Database = {
           id?: string
           lida?: boolean
           mensagem: string
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo?: string
           user_id: string
         }
@@ -130,6 +158,8 @@ export type Database = {
           id?: string
           lida?: boolean
           mensagem?: string
+          referencia_id?: string | null
+          referencia_tipo?: string | null
           tipo?: string
           user_id?: string
         }
@@ -193,27 +223,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      pontos_predefinidos: {
-        Row: {
-          activo: boolean
-          created_at: string
-          id: string
-          nome: string
-        }
-        Insert: {
-          activo?: boolean
-          created_at?: string
-          id?: string
-          nome: string
-        }
-        Update: {
-          activo?: boolean
-          created_at?: string
-          id?: string
-          nome?: string
-        }
-        Relationships: []
       }
       passageiros: {
         Row: {
@@ -362,6 +371,30 @@ export type Database = {
         }
         Relationships: []
       }
+      pontos_predefinidos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registo_auditoria: {
         Row: {
           alterado_por: string | null
@@ -446,6 +479,7 @@ export type Database = {
       rotas: {
         Row: {
           created_at: string
+          data_servico: string | null
           data_viagem: string | null
           distancia_km: number | null
           embarque_fechado: boolean
@@ -457,15 +491,16 @@ export type Database = {
           id: string
           motorista_id: string | null
           nome: string
+          paragem_id: string | null
           passageiros_previstos: number | null
           pedido_id: string | null
-          ponto_partida_id: string | null
           ponto_chegada_id: string | null
-          paragem_id: string | null
+          ponto_partida_id: string | null
           veiculo_id: string | null
         }
         Insert: {
           created_at?: string
+          data_servico?: string | null
           data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
@@ -477,15 +512,16 @@ export type Database = {
           id?: string
           motorista_id?: string | null
           nome: string
+          paragem_id?: string | null
           passageiros_previstos?: number | null
           pedido_id?: string | null
-          ponto_partida_id?: string | null
           ponto_chegada_id?: string | null
-          paragem_id?: string | null
+          ponto_partida_id?: string | null
           veiculo_id?: string | null
         }
         Update: {
           created_at?: string
+          data_servico?: string | null
           data_viagem?: string | null
           distancia_km?: number | null
           embarque_fechado?: boolean
@@ -497,26 +533,26 @@ export type Database = {
           id?: string
           motorista_id?: string | null
           nome?: string
+          paragem_id?: string | null
           passageiros_previstos?: number | null
           pedido_id?: string | null
-          ponto_partida_id?: string | null
           ponto_chegada_id?: string | null
-          paragem_id?: string | null
+          ponto_partida_id?: string | null
           veiculo_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "rotas_paragem_id_fkey"
+            columns: ["paragem_id"]
+            isOneToOne: false
+            referencedRelation: "pontos_predefinidos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rotas_pedido_id_fkey"
             columns: ["pedido_id"]
             isOneToOne: false
             referencedRelation: "pedidos_transporte"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rotas_ponto_partida_id_fkey"
-            columns: ["ponto_partida_id"]
-            isOneToOne: false
-            referencedRelation: "pontos_predefinidos"
             referencedColumns: ["id"]
           },
           {
@@ -527,8 +563,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "rotas_paragem_id_fkey"
-            columns: ["paragem_id"]
+            foreignKeyName: "rotas_ponto_partida_id_fkey"
+            columns: ["ponto_partida_id"]
             isOneToOne: false
             referencedRelation: "pontos_predefinidos"
             referencedColumns: ["id"]
@@ -646,13 +682,26 @@ export type Database = {
     }
     Functions: {
       cancelar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
-      eliminar_rota_segura: { Args: { _rota_id: string }; Returns: undefined }
-      eliminar_todas_rotas_segura: { Args: never; Returns: number }
-      criar_rota_operacional: { Args: { _nome?: string | null; _veiculo_id?: string | null; _motorista_id?: string | null; _ponto_partida_id?: string | null; _ponto_chegada_id?: string | null; _paragem_id?: string | null; _hora_inicio?: string | null; _hora_fim?: string | null; _passageiros_previstos?: number | null }; Returns: string }
-      eliminar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
-      limpar_dados_apresentacao: { Args: never; Returns: Json }
       concluir_rota_segura: { Args: { _rota_id: string }; Returns: Json }
       conta_activa: { Args: never; Returns: boolean }
+      criar_rota_operacional: {
+        Args: {
+          _hora_fim?: string
+          _hora_inicio?: string
+          _motorista_id?: string
+          _nome?: string
+          _paragem_id?: string
+          _passageiros_previstos?: number
+          _ponto_chegada_id?: string
+          _ponto_partida_id?: string
+          _veiculo_id?: string
+        }
+        Returns: string
+      }
+      eliminar_meus_pedidos: { Args: never; Returns: number }
+      eliminar_pedido: { Args: { _pedido_id: string }; Returns: undefined }
+      eliminar_rota_segura: { Args: { _rota_id: string }; Returns: undefined }
+      eliminar_todas_rotas_segura: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -661,16 +710,89 @@ export type Database = {
         Returns: boolean
       }
       iniciar_rota_segura: { Args: { _rota_id: string }; Returns: Json }
+      limpar_dados_apresentacao: { Args: never; Returns: Json }
+      media_avaliacoes: {
+        Args: never
+        Returns: {
+          media: number
+          total: number
+        }[]
+      }
+      notificar_evento: {
+        Args: {
+          p_mensagem: string
+          p_referencia_id: string
+          p_referencia_tipo: string
+          p_tipo: string
+          p_user_ids?: string[]
+        }
+        Returns: undefined
+      }
       notificar_novo_pedido: { Args: { _pedido_id: string }; Returns: number }
       pode_gerir_rota: { Args: { _rota_id: string }; Returns: boolean }
       pode_ver_rota: { Args: { _rota_id: string }; Returns: boolean }
-      reservar_viagem_passageiro: {
-        Args: { _rota_id: string; _paragem_embarque_id: string; _paragem_desembarque_id: string }
+      pontos_disponiveis: {
+        Args: { _data: string }
+        Returns: {
+          nome: string
+        }[]
+      }
+      reservar_viagem: {
+        Args: {
+          _desembarque_id: string
+          _embarque_id: string
+          _rota_id: string
+        }
         Returns: string
+      }
+      reservar_viagem_passageiro: {
+        Args: {
+          _paragem_desembarque_id: string
+          _paragem_embarque_id: string
+          _rota_id: string
+        }
+        Returns: string
+      }
+      rotas_disponiveis: {
+        Args: { _data: string; _destino: string; _origem: string }
+        Returns: {
+          hora_chegada: string
+          hora_partida: string
+          lugares_livres: number
+          paragem_desembarque_id: string
+          paragem_embarque_id: string
+          rota_id: string
+          rota_nome: string
+          veiculo: string
+        }[]
+      }
+      viagens_disponiveis_passageiro: {
+        Args: { _data: string; _destino: string; _origem: string }
+        Returns: {
+          data_viagem: string
+          embarque_fecha_em: string
+          hora_chegada: string
+          hora_embarque: string
+          lugares: number
+          lugares_livres: number
+          matricula: string
+          paragem_desembarque: string
+          paragem_desembarque_id: string
+          paragem_embarque: string
+          paragem_embarque_id: string
+          rota_id: string
+          rota_nome: string
+          veiculo: string
+        }[]
       }
     }
     Enums: {
-      app_role: "operador" | "motorista" | "admin" | "passageiro" | "responsavel_grupo"
+      app_role:
+        | "operador"
+        | "motorista"
+        | "admin"
+        | "passageiro"
+        | "responsavel_grupo"
       categoria_passageiro:
         | "atleta"
         | "coach"
@@ -836,7 +958,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["operador", "motorista", "admin", "passageiro", "responsavel_grupo"],
+      app_role: [
+        "operador",
+        "motorista",
+        "admin",
+        "passageiro",
+        "responsavel_grupo",
+      ],
       categoria_passageiro: [
         "atleta",
         "coach",
