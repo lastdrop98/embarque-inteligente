@@ -402,3 +402,39 @@ div[id*="lovable-badge"] {
     scrollbar-width: none;
   }
 }
+
+/* A navegação do operador mantém uma única fila com scroll visível no mobile. */
+@media (max-width: 767px) {
+  .operator-section-tabs[role="tablist"] {
+    display: flex;
+    height: auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    overflow-x: scroll;
+    padding: 0.25rem 0.25rem 0.5rem;
+    scrollbar-width: auto;
+    scrollbar-color: var(--muted-foreground) var(--muted);
+  }
+
+  .operator-section-tabs[role="tablist"]::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .operator-section-tabs[role="tablist"]::-webkit-scrollbar-track {
+    background: var(--muted);
+  }
+
+  .operator-section-tabs[role="tablist"]::-webkit-scrollbar-thumb {
+    background: var(--muted-foreground);
+    border-radius: var(--radius-sm);
+  }
+
+  .operator-section-tabs[role="tablist"] > [role="tab"] {
+    flex: 0 0 auto;
+    min-height: 2.75rem;
+    padding-inline: 0.875rem;
+    scroll-margin-inline: 0.5rem;
+  }
+}
