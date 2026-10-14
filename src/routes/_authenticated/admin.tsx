@@ -1164,7 +1164,7 @@ function PontosPredefinidos() {
           <Button disabled={!novoPonto.trim() || !temCoordenadas || guardar.isPending} onClick={() => guardar.mutate()}>
             {guardar.isPending ? "A guardar..." : editId ? "Guardar alterações" : "Adicionar ponto"}
           </Button>
-          {editId && <Button variant="ghost" onClick={limpar}>Cancelar edição</Button>}
+          <Button variant="ghost" onClick={limpar}>{editId ? "Cancelar edição" : "Limpar campos"}</Button>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {pontos?.map((p) => (
