@@ -109,6 +109,7 @@ export default function MapaVeiculos({
   const veiculoEmSeguimento = vs[0];
   const objetivo = ps.find((p) => p.id === objetivoVeiculoId);
   const [percursoActivo, setPercursoActivo] = useState<Ponto[]>([]);
+  const [estimativaPercurso, setEstimativaPercurso] = useState<{ distanciaMetros: number; duracaoSegundos: number } | null>(null);
   // Recalcula a rota rodoviária a cada ~100 m, sem sobrecarregar o serviço público de rotas.
   const origemRotaLat = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.latitude * 1000) / 1000 : null;
   const origemRotaLng = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.longitude * 1000) / 1000 : null;
@@ -123,6 +124,7 @@ export default function MapaVeiculos({
     const origem: Ponto = [veiculoEmSeguimento.latitude, veiculoEmSeguimento.longitude];
     const destino: Ponto = [objetivo.latitude, objetivo.longitude];
     setPercursoActivo([origem, destino]);
+    setEstimativaPercurso(null);
     const controller = new AbortController();
     const url = `https://router.project-osrm.org/route/v1/driving/${veiculoEmSeguimento.longitude},${veiculoEmSeguimento.latitude};${objetivo.longitude},${objetivo.latitude}?overview=full&geometries=geojson`;
     fetch(url, { signal: controller.signal })
@@ -130,13 +132,18 @@ export default function MapaVeiculos({
         if (!response.ok) throw new Error("Serviço de rotas indisponível");
         return response.json();
       })
-      .then((data: { routes?: { geometry?: { coordinates?: [number, number][] } }[] }) => {
-        const coords = data.routes?.[0]?.geometry?.coordinates;
+      .then((data: { routes?: { distance?: number; duration?: number; geometry?: { coordinates?: [number, number][] } }[] }) => {
+        const route = data.routes?.[0];
+        const coords = route?.geometry?.coordinates;
         if (coords && coords.length > 1) setPercursoActivo(coords.map(([lng, lat]): Ponto => [lat, lng]));
+        if (typeof route?.distance === "number" && typeof route.duration === "number") {
+          setEstimativaPercurso({ distanciaMetros: route.distance, duracaoSegundos: route.duration });
+        }
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
         // O fallback directo já foi colocado no estado acima.
+        setEstimativaPercurso(null);
       });
     return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,6 +157,7 @@ export default function MapaVeiculos({
   ]);
 
   return (
+    <div className="space-y-2">
     <div className="overflow-hidden rounded-lg border" style={{ height: altura }}>
       <MapContainer
         center={centro}
@@ -195,6 +203,15 @@ export default function MapaVeiculos({
           </Marker>
         ))}
       </MapContainer>
+    </div>
+    {objetivo && objetivoVeiculoId && (
+      <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Próxima paragem: {objetivo.nome}</span>
+        {estimativaPercurso
+          ? ` · ${(estimativaPercurso.distanciaMetros / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })} km · cerca de ${Math.max(1, Math.round(estimativaPercurso.duracaoSegundos / 60))} min, estimativa sem trânsito em tempo real`
+          : " · percurso rodoviário aproximado"}
+      </div>
+    )}
     </div>
   );
 }
