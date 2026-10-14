@@ -1,3 +1,11 @@
+-- Referência da migração agora versionada no repositório.
+-- Migração principal: drizzle/migrations/0012_pontos_coordenadas_veiculos_marca_modelo.sql
+-- Espelho para Supabase CLI: supabase/migrations/20261014100000_pontos_coordenadas_veiculos_marca_modelo.sql
+-- Não executar manualmente se o pipeline de migrações já aplicou a versão 0012.
+-- A migração é aditiva: não elimina registos nem tenta adivinhar marcas, modelos ou coordenadas.
+-- Os pontos antigos ficam sem coordenadas e não são seleccionáveis para novas rotas até um administrador
+-- escolher a localização correcta no mapa e guardar as coordenadas verificadas.
+
 -- PROPOSTA (NÃO APLICADA). Rever antes de aplicar manualmente.
 -- Coordenadas reais dos pontos predefinidos: NULL até serem escolhidas/verificadas no mapa.
 ALTER TABLE public.pontos_predefinidos
