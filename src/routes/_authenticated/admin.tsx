@@ -1110,6 +1110,15 @@ function PontosPredefinidos() {
 
   const eliminar = useMutation({
     mutationFn: async (id: string) => {
+      const ponto = pontos?.find((item) => item.id === id);
+      if (!ponto) throw new Error("Não foi possível localizar o ponto seleccionado.");
+      const { data: paragensAssociadas, error: erroBusca } = await supabase
+        .from("paragens")
+        .select("id")
+        .eq("nome", ponto.nome)
+        .limit(1);
+      if (erroBusca) throw erroBusca;
+      if (paragensAssociadas?.length) throw new Error("Este ponto já está associado a rotas ou histórico. Desactive-o para impedir novas utilizações, em vez de o eliminar.");
       const { error } = await supabase.from("pontos_predefinidos").delete().eq("id", id);
       if (error) throw error;
     },
