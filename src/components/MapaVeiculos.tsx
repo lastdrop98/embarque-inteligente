@@ -116,8 +116,8 @@ export default function MapaVeiculos({
         markerZoomAnimation={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · <a href="https://www.openstreetmap.org/fixthemap">Reportar erro no mapa</a>'
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <AjustarVista pontos={pontos} />
         {onCliqueMapa && <CliqueMapa onClique={onCliqueMapa} />}
