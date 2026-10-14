@@ -148,6 +148,90 @@ class SafeNotifications extends Component<
   }
 }
 
+function TurnoGpsGlobal({ userId }: { userId: string }) {
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+    let watchId: number | null = null;
+    let vehicleId: string | null = null;
+    let routeId: string | null = null;
+    let sincronizando = false;
+    let disposed = false;
+    const key = `pickapp:turno-activo:${userId}`;
+
+    const pararSeguimento = () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      vehicleId = null;
+      routeId = null;
+    };
+
+    const sincronizar = async () => {
+      if (sincronizando || disposed) return;
+      sincronizando = true;
+      try {
+        const guardada = window.localStorage.getItem(key);
+        if (!guardada) {
+          pararSeguimento();
+          return;
+        }
+        if (guardada === routeId && watchId !== null) return;
+
+        pararSeguimento();
+        const { data: rota, error } = await supabase
+          .from("rotas")
+          .select("id, veiculo_id, estado")
+          .eq("id", guardada)
+          .maybeSingle();
+        if (error) throw error;
+        if (!rota || !rota.veiculo_id || !["rascunho", "agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(rota.estado)) {
+          window.localStorage.removeItem(key);
+          return;
+        }
+
+        routeId = rota.id;
+        vehicleId = rota.veiculo_id;
+        const idVeiculo = rota.veiculo_id;
+        watchId = navigator.geolocation.watchPosition(
+          async (pos) => {
+            const { error: erroGps } = await supabase
+              .from("veiculos")
+              .update({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                posicao_updated_at: new Date().toISOString(),
+                estado: "em_rota",
+              })
+              .eq("id", idVeiculo);
+            if (erroGps) console.error("[gps-global] não foi possível actualizar a posição:", erroGps.message);
+          },
+          (erro) => console.error("[gps-global] geolocalização indisponível:", erro.message),
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+        );
+      } catch (erro) {
+        console.error("[gps-global] erro ao restaurar o seguimento:", erro);
+      } finally {
+        sincronizando = false;
+      }
+    };
+
+    const aoMudarTurno = () => { void sincronizar(); };
+    window.addEventListener("pickapp:turno-actualizado", aoMudarTurno);
+    window.addEventListener("storage", aoMudarTurno);
+    const intervalo = window.setInterval(() => { void sincronizar(); }, 2000);
+    void sincronizar();
+
+    return () => {
+      disposed = true;
+      window.clearInterval(intervalo);
+      window.removeEventListener("pickapp:turno-actualizado", aoMudarTurno);
+      window.removeEventListener("storage", aoMudarTurno);
+      pararSeguimento();
+    };
+  }, [userId]);
+
+  return null;
+}
+
 function Layout() {
   const { data, isLoading, isError, error } = useSessao();
   const navigate = useNavigate();
@@ -269,6 +353,7 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-secondary">
+      <TurnoGpsGlobal userId={data.user.id} />
       <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/95 text-white shadow-lg backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-3 py-2 sm:px-4 sm:py-3">
           <div className="flex min-h-11 items-center gap-2 sm:gap-3">

@@ -50,7 +50,6 @@ function MotoristaPage() {
   const [incidenteAberto, setIncidenteAberto] = useState<string | null>(null);
   const [descIncidente, setDescIncidente] = useState("");
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
-  const watchIdRef = useRef<number | null>(null);
 
   const { data: rotas } = useQuery({
     queryKey: ["minhas-rotas"],
@@ -136,37 +135,6 @@ function MotoristaPage() {
     })();
   }, [rotas]);
 
-  // O GPS é ligado enquanto o turno estiver activo e volta a ligar após a página ser montada.
-  useEffect(() => {
-    if (!emServico || !rota?.veiculo_id || !navigator.geolocation) return;
-    const veiculoId = rota.veiculo_id;
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { error } = await supabase
-          .from("veiculos")
-          .update({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            posicao_updated_at: new Date().toISOString(),
-            estado: "em_rota",
-          })
-          .eq("id", veiculoId);
-        if (error) console.error("[motorista] falha ao actualizar GPS:", error.message);
-      },
-      (err) => {
-        console.error("[motorista] geolocation error:", err);
-        toast.error("Não foi possível obter a localização. Verifica as permissões.");
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
-    return () => {
-      if (watchIdRef.current != null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    };
-  }, [emServico, rota?.veiculo_id]);
-
   const { data: viagens } = useQuery({
     queryKey: ["viagens-rota", rota?.id],
     enabled: !!rota?.id,
@@ -216,6 +184,7 @@ function MotoristaPage() {
       const { data: authData } = await supabase.auth.getUser();
       if (authData.user) {
         window.localStorage.setItem(`pickapp:turno-activo:${authData.user.id}`, rota.id);
+        window.dispatchEvent(new Event("pickapp:turno-actualizado"));
       }
     }
     setEmServico(true);
@@ -234,11 +203,10 @@ function MotoristaPage() {
 
     if (typeof window !== "undefined") {
       const { data: authData } = await supabase.auth.getUser();
-      if (authData.user) window.localStorage.removeItem(`pickapp:turno-activo:${authData.user.id}`);
-    }
-    if (watchIdRef.current != null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+      if (authData.user) {
+        window.localStorage.removeItem(`pickapp:turno-activo:${authData.user.id}`);
+        window.dispatchEvent(new Event("pickapp:turno-actualizado"));
+      }
     }
     if (rota?.veiculo_id) {
       await supabase.from("veiculos").update({ estado: "inactivo" }).eq("id", rota.veiculo_id);
@@ -407,7 +375,10 @@ function MotoristaPage() {
                     setParagemId("");
                     if (emServico && typeof window !== "undefined") {
                       void supabase.auth.getUser().then(({ data }) => {
-                        if (data.user) window.localStorage.setItem(`pickapp:turno-activo:${data.user.id}`, novoId);
+                        if (data.user) {
+                          window.localStorage.setItem(`pickapp:turno-activo:${data.user.id}`, novoId);
+                          window.dispatchEvent(new Event("pickapp:turno-actualizado"));
+                        }
                       });
                     }
                   }}
