@@ -217,7 +217,7 @@ function Conteudo({ userId }: { userId: string }) {
                 ...(proximaComVeiculo.desembarque ? [{ ...proximaComVeiculo.desembarque, ordem: 2 }] : []),
               ]}
               tracado
-              objetivoVeiculoId={proximaComVeiculo.estado === "pendente" ? proximaComVeiculo.embarque?.id : proximaComVeiculo.desembarque?.id}
+              objetivoVeiculoId={(proximaComVeiculo.estado === "pendente" ? proximaComVeiculo.embarque?.id : proximaComVeiculo.desembarque?.id) ?? ""}
               altura={300}
             />
           </CardContent>
