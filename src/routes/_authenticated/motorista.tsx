@@ -396,7 +396,7 @@ function MotoristaPage() {
                 veiculos={rota.veiculos ? [rota.veiculos as PosVeiculo] : []}
                 paragens={paragens.map((p) => ({ ...p, destaque: p.id === proximaParagem?.id }))}
                 tracado
-                objetivoVeiculoId={proximaParagem?.id}
+                objetivoVeiculoId={proximaParagem?.id ?? ""}
                 altura={300}
               />
             </CardContent>
