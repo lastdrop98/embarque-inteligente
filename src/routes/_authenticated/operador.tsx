@@ -230,7 +230,7 @@ function Delegacoes() {
           <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar delegação"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -843,7 +843,7 @@ function Passageiros() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar passageiro"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -920,7 +920,7 @@ function Viagens() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Bilhete QR gerado"); invalidate("viagens", "reconciliacao"); },
+    onSuccess: () => { toast.success("Bilhete QR gerado"); limparAtribuicao(); invalidate("viagens", "reconciliacao"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
