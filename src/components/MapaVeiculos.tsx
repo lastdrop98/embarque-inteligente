@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
+import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 export type PosVeiculo = {
@@ -51,10 +52,10 @@ function iconeParagem(ordem: number, destaque?: boolean) {
   });
 }
 
-function AjustarVista({ pontos }: { pontos: Ponto[] }) {
+function AjustarVista({ pontos, seguirVeiculo }: { pontos: Ponto[]; seguirVeiculo: boolean }) {
   const map = useMap();
   useEffect(() => {
-    if (!pontos.length) return;
+    if (seguirVeiculo || !pontos.length) return;
     if (pontos.length === 1) {
       const [unico] = pontos;
       if (unico) map.setView(unico, 14);
@@ -62,7 +63,7 @@ function AjustarVista({ pontos }: { pontos: Ponto[] }) {
       map.fitBounds(L.latLngBounds(pontos), { padding: [32, 32] });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, JSON.stringify(pontos)]);
+  }, [map, JSON.stringify(pontos), seguirVeiculo]);
   return null;
 }
 
@@ -71,6 +72,31 @@ function CliqueMapa({ onClique }: { onClique: (lat: number, lng: number) => void
     click: (e) => onClique(e.latlng.lat, e.latlng.lng),
   });
   return null;
+}
+
+type ResultadoPesquisa = { place_id: number; display_name: string; lat: string; lon: string };
+
+function GuardarMapa({ onReady }: { onReady: (map: LeafletMap) => void }) {
+  const map = useMap();
+  useEffect(() => { onReady(map); }, [map, onReady]);
+  return null;
+}
+
+function SeguirVeiculo({ posicao, activo }: { posicao: Ponto | null; activo: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (activo && posicao) map.panTo(posicao, { animate: true, duration: 0.5 });
+  }, [map, activo, posicao?.[0], posicao?.[1]]);
+  return null;
+}
+
+function iconePesquisa() {
+  return L.divIcon({
+    className: "",
+    html: '<div style="background:#2563eb;width:20px;height:20px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 8px #0005"></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 20],
+  });
 }
 
 export default function MapaVeiculos({
@@ -110,6 +136,39 @@ export default function MapaVeiculos({
   const objetivo = ps.find((p) => p.id === objetivoVeiculoId);
   const [percursoActivo, setPercursoActivo] = useState<Ponto[]>([]);
   const [estimativaPercurso, setEstimativaPercurso] = useState<{ distanciaMetros: number; duracaoSegundos: number } | null>(null);
+  const [mapa, setMapa] = useState<LeafletMap | null>(null);
+  const [pesquisa, setPesquisa] = useState("");
+  const [resultadosPesquisa, setResultadosPesquisa] = useState<ResultadoPesquisa[]>([]);
+  const [pesquisando, setPesquisando] = useState(false);
+  const [localPesquisado, setLocalPesquisado] = useState<Ponto | null>(null);
+  const guardarMapa = useCallback((instancia: LeafletMap) => setMapa(instancia), []);
+  const procurarLocal = async () => {
+    const termo = pesquisa.trim();
+    if (!termo) return;
+    setPesquisando(true);
+    try {
+      const params = new URLSearchParams({ format: "jsonv2", q: termo, limit: "5", countrycodes: "mz" });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Pesquisa de locais indisponível.");
+      const locais = await response.json() as ResultadoPesquisa[];
+      setResultadosPesquisa(locais);
+      if (!locais.length) throw new Error("Não foram encontrados locais para essa pesquisa.");
+    } catch (error) {
+      setResultadosPesquisa([]);
+      console.error("[mapa] pesquisa:", error);
+    } finally {
+      setPesquisando(false);
+    }
+  };
+  const escolherLocal = (local: ResultadoPesquisa) => {
+    const ponto: Ponto = [Number(local.lat), Number(local.lon)];
+    setLocalPesquisado(ponto);
+    setPesquisa(local.display_name);
+    setResultadosPesquisa([]);
+    mapa?.setView(ponto, 16, { animate: true });
+  };
   // Recalcula a rota rodoviária a cada ~100 m, sem sobrecarregar o serviço público de rotas.
   const origemRotaLat = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.latitude * 1000) / 1000 : null;
   const origemRotaLng = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.longitude * 1000) / 1000 : null;
@@ -158,12 +217,12 @@ export default function MapaVeiculos({
 
   return (
     <div className="space-y-2">
-    <div className="overflow-hidden rounded-lg border" style={{ height: altura }}>
+    <div className="relative overflow-hidden rounded-lg border" style={{ height: altura }}>
       <MapContainer
         center={centro}
         zoom={pontos.length ? 13 : 12}
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom={false}
+        scrollWheelZoom={true}
         zoomAnimation={false}
         fadeAnimation={false}
         markerZoomAnimation={false}
@@ -172,7 +231,17 @@ export default function MapaVeiculos({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · <a href="https://www.openstreetmap.org/fixthemap">Reportar erro no mapa</a>'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <AjustarVista pontos={pontos} />
+        <GuardarMapa onReady={guardarMapa} />
+        <AjustarVista pontos={pontos} seguirVeiculo={Boolean(objetivoVeiculoId)} />
+        <SeguirVeiculo
+          posicao={veiculoEmSeguimento ? [veiculoEmSeguimento.latitude, veiculoEmSeguimento.longitude] : null}
+          activo={Boolean(objetivoVeiculoId)}
+        />
+        {localPesquisado && (
+          <Marker position={localPesquisado} icon={iconePesquisa()}>
+            <Popup>Local pesquisado</Popup>
+          </Marker>
+        )}
         {onCliqueMapa && <CliqueMapa onClique={onCliqueMapa} />}
         {tracado && pontosParagens.length > 1 && (
           <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.55, dashArray: "7 6" }} />
@@ -203,6 +272,41 @@ export default function MapaVeiculos({
           </Marker>
         ))}
       </MapContainer>
+      <div className="absolute left-3 right-3 top-3 z-[1000] max-w-sm space-y-1">
+        <form
+          className="flex gap-1 rounded-xl border bg-white/95 p-1 shadow-lg backdrop-blur"
+          onSubmit={(event) => { event.preventDefault(); void procurarLocal(); }}
+        >
+          <input
+            aria-label="Pesquisar local no mapa"
+            className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm text-slate-900 outline-none placeholder:text-slate-500"
+            value={pesquisa}
+            onChange={(event) => setPesquisa(event.target.value)}
+            placeholder="Pesquisar local ou morada…"
+          />
+          <button
+            type="submit"
+            disabled={pesquisando || !pesquisa.trim()}
+            className="rounded-lg bg-blue-600 px-3 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {pesquisando ? "…" : "Pesquisar"}
+          </button>
+        </form>
+        {resultadosPesquisa.length > 0 && (
+          <div className="max-h-44 overflow-y-auto rounded-xl border bg-white shadow-lg">
+            {resultadosPesquisa.map((local) => (
+              <button
+                key={local.place_id}
+                type="button"
+                className="block w-full border-b px-3 py-2 text-left text-xs text-slate-800 last:border-0 hover:bg-slate-100"
+                onClick={() => escolherLocal(local)}
+              >
+                {local.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
     {objetivo && objetivoVeiculoId && (
       <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
