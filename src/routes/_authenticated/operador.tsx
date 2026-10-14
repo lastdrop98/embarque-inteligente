@@ -407,15 +407,18 @@ function Rotas() {
         .select("id, ordem")
         .eq("rota_id", rotaCriada)
         .order("ordem");
-      if (erroParagens) throw erroParagens;
+      let coordenadasSincronizadas = !erroParagens && (paragensCriadas?.length ?? 0) === pontosEscolhidos.length;
       for (const paragem of paragensCriadas ?? []) {
         const ponto = pontosEscolhidos[paragem.ordem - 1];
-        if (!ponto || ponto.latitude === null || ponto.longitude === null) continue;
+        if (!ponto || ponto.latitude === null || ponto.longitude === null) {
+          coordenadasSincronizadas = false;
+          continue;
+        }
         const { error: erroCoordenadas } = await supabase
           .from("paragens")
           .update({ latitude: ponto.latitude, longitude: ponto.longitude })
           .eq("id", paragem.id);
-        if (erroCoordenadas) throw erroCoordenadas;
+        if (erroCoordenadas) coordenadasSincronizadas = false;
       }
 
       if (paragemId && inicio && fim) {
@@ -437,9 +440,11 @@ function Rotas() {
           if (erroHoraParagem) throw erroHoraParagem;
         }
       }
+      return { coordenadasSincronizadas };
     },
-    onSuccess: () => {
+    onSuccess: ({ coordenadasSincronizadas }) => {
       toast.success("Rota criada");
+      if (!coordenadasSincronizadas) toast.warning("A rota foi criada, mas não foi possível sincronizar todas as coordenadas das paragens. Reveja as permissões e volte a guardar os pontos verificados no painel de administração.");
       limparFormularioRota();
       invalidate("rotas", "rotas-disponiveis-passageiro");
     },
