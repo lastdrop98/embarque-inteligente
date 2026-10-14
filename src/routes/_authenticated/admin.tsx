@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 
 import MapaVeiculos from "@/components/MapaVeiculos";
+import { MapaRotasActivas } from "@/components/MapaRotasActivas";
 
 export const Route = createFileRoute(
   "/_authenticated/admin"
@@ -147,6 +148,7 @@ function AdminPage() {
       <Kpis />
 
       <MapaGeral />
+      <MapaRotasActivas />
 
       <Utilizadores
         utilizadorAtualId={sessao.user.id}

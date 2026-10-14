@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import MapaVeiculos from "@/components/MapaVeiculos";
+import { MapaRotasActivas } from "@/components/MapaRotasActivas";
 import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
 import { Pencil, Trash2, X, Save } from "lucide-react";

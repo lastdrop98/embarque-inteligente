@@ -185,9 +185,9 @@ function Conteudo({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Área do Passageiro</h1>
-        <p className="text-sm text-muted-foreground">Solicite transporte, acompanhe pedidos e consulte os seus bilhetes.</p>
+      <div className="relative overflow-hidden rounded-2xl bg-cover bg-center px-5 py-7 text-white shadow-sm sm:px-7" style={{ backgroundImage: "linear-gradient(100deg, rgba(8,28,54,.92), rgba(8,28,54,.48)), url(https://images.unsplash.com/photo-1509744641721-64e5e6b3a3c5?auto=format&fit=crop&w=1600&q=80)" }}>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Área do Passageiro</h1>
+        <p className="mt-1 text-sm text-white/80">Solicite transporte, acompanhe pedidos e consulte os seus bilhetes.</p>
       </div>
       <PassageiroPedidos
         passageiro={{ id: passageiro.id, nome: passageiro.nome, categoria: passageiro.categoria }}

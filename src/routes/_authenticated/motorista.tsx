@@ -117,6 +117,56 @@ function MotoristaPage() {
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
   const proximaParagem = paragemId ? paragens.find((p) => p.id === paragemId) : paragens[0];
 
+  // Restaura o turno se o motorista navegar para outro painel e voltar.
+  useEffect(() => {
+    if (!rotas || typeof window === "undefined") return;
+    void (async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return;
+      const key = `pickapp:turno-activo:${authData.user.id}`;
+      const rotaGuardada = window.localStorage.getItem(key);
+      if (!rotaGuardada) return;
+      const activa = rotas.find((r) => r.id === rotaGuardada && ["rascunho", "agendada", "embarque_aberto", "embarque_fechado", "em_curso"].includes(r.estado));
+      if (activa) {
+        setRotaId(activa.id);
+        setEmServico(true);
+      } else {
+        window.localStorage.removeItem(key);
+      }
+    })();
+  }, [rotas]);
+
+  // O GPS é ligado enquanto o turno estiver activo e volta a ligar após a página ser montada.
+  useEffect(() => {
+    if (!emServico || !rota?.veiculo_id || !navigator.geolocation) return;
+    const veiculoId = rota.veiculo_id;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const { error } = await supabase
+          .from("veiculos")
+          .update({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            posicao_updated_at: new Date().toISOString(),
+            estado: "em_rota",
+          })
+          .eq("id", veiculoId);
+        if (error) console.error("[motorista] falha ao actualizar GPS:", error.message);
+      },
+      (err) => {
+        console.error("[motorista] geolocation error:", err);
+        toast.error("Não foi possível obter a localização. Verifica as permissões.");
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    );
+    return () => {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [emServico, rota?.veiculo_id]);
+
   const { data: viagens } = useQuery({
     queryKey: ["viagens-rota", rota?.id],
     enabled: !!rota?.id,
@@ -162,24 +212,12 @@ function MotoristaPage() {
       return;
     }
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        await supabase
-          .from("veiculos")
-          .update({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            posicao_updated_at: new Date().toISOString(),
-            estado: "em_rota",
-          })
-          .eq("id", veiculoId);
-      },
-      (err) => {
-        console.error("[motorista] geolocation error:", err);
-        toast.error("Não foi possível obter a localização. Verifica as permissões.");
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
-    );
+    if (typeof window !== "undefined") {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        window.localStorage.setItem(`pickapp:turno-activo:${authData.user.id}`, rota.id);
+      }
+    }
     setEmServico(true);
     toast.success("Turno iniciado — a partilhar localização.");
   }
@@ -194,6 +232,10 @@ function MotoristaPage() {
       qc.invalidateQueries({ queryKey: ["minhas-rotas"] });
     }
 
+    if (typeof window !== "undefined") {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) window.localStorage.removeItem(`pickapp:turno-activo:${authData.user.id}`);
+    }
     if (watchIdRef.current != null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -221,12 +263,6 @@ function MotoristaPage() {
       supabase.removeChannel(canal);
     };
   }, [rota?.veiculo_id, qc]);
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
-    };
-  }, []);
 
   // ---- Scanner QR ----
   async function pararScan() {
@@ -323,14 +359,14 @@ function MotoristaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-premium-in flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="animate-premium-in relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-cover bg-center px-5 py-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-7" style={{ backgroundImage: "linear-gradient(100deg, rgba(8,28,54,.92), rgba(8,28,54,.48)), url(https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80)" }}>
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/20 px-3 py-1 text-[11px] font-medium text-white shadow-sm backdrop-blur">
             <Wifi className="h-3.5 w-3.5 text-emerald-600" />
             Operação em tempo real
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Área do Motorista</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Rota, embarques e viagem num só lugar.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Área do Motorista</h1>
+          <p className="mt-1 text-sm text-white/80">Rota, embarques e viagem num só lugar.</p>
         </div>
         {emServico ? (
           <Button variant="destructive" size="lg" className="h-12 min-w-[180px]" onClick={terminarTurno}>
@@ -365,7 +401,16 @@ function MotoristaPage() {
                 <select
                   className="h-9 w-full rounded-md border bg-background px-2 text-sm"
                   value={rota.id}
-                  onChange={(e) => { setRotaId(e.target.value); setParagemId(""); }}
+                  onChange={(e) => {
+                    const novoId = e.target.value;
+                    setRotaId(novoId);
+                    setParagemId("");
+                    if (emServico && typeof window !== "undefined") {
+                      void supabase.auth.getUser().then(({ data }) => {
+                        if (data.user) window.localStorage.setItem(`pickapp:turno-activo:${data.user.id}`, novoId);
+                      });
+                    }
+                  }}
                 >
                   {rotasOperacionais.map((r) => <option key={r.id} value={r.id}>{r.nome} · {r.estado.replaceAll("_", " ")}</option>)}
                 </select>
