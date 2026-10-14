@@ -40,11 +40,11 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pontos_predefinidos")
-        .select("id, nome").eq("activo", true)
+        .select("id, nome, latitude, longitude, coordenadas_verificadas").eq("activo", true)
         .order("nome");
       if (error) throw error;
       const vistos = new Set<string>();
-      return (data ?? []).filter((p) => {
+      return (data ?? []).filter((p) => p.coordenadas_verificadas && p.latitude !== null && p.longitude !== null).filter((p) => {
         const chave = p.nome.trim().toLowerCase();
         if (vistos.has(chave)) return false;
         vistos.add(chave);
@@ -279,9 +279,14 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
             {motivoBloqueio && (
               <p role="status" className="text-xs text-muted-foreground">{motivoBloqueio}</p>
             )}
-            <Button type="button" disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
-              {confirmarViagem.isPending ? "A confirmar..." : "Confirmar viagem"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
+                {confirmarViagem.isPending ? "A confirmar..." : "Confirmar viagem"}
+              </Button>
+              <Button type="button" variant="ghost" disabled={confirmarViagem.isPending} onClick={() => { setOrigem(""); setDestino(""); setRotaId(""); setDataViagem(hoje); }}>
+                Cancelar / limpar selecção
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
