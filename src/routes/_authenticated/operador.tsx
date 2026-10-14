@@ -13,7 +13,7 @@ import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
 import { Pencil, Trash2, X, Save } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
-import { juntarMarcaModelo, separarMarcaModelo, mensagemErro } from "@/lib/veiculo";
+import { juntarMarcaModelo, mensagemErro } from "@/lib/veiculo";
 
 export const Route = createFileRoute("/_authenticated/operador")({
   head: () => ({
@@ -94,13 +94,19 @@ function Veiculos() {
 
   const guardar = useMutation({
     mutationFn: async () => {
-      const campos = { nome: juntarMarcaModelo(marca, modelo), matricula: matricula.trim(), lugares };
+      const campos = {
+        nome: juntarMarcaModelo(marca, modelo),
+        marca: marca.trim(),
+        modelo: modelo.trim(),
+        matricula: matricula.trim(),
+        lugares,
+      };
       const { error } = editId
         ? await supabase.from("veiculos").update(campos).eq("id", editId)
         : await supabase.from("veiculos").insert({ ...campos, estado: "disponivel" });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success(editId ? "Veículo actualizado" : "Veículo criado"); limpar(); invalidate("veiculos", "rotas"); },
+    onSuccess: () => { toast.success(editId ? "Veículo actualizado" : "Veículo criado"); limpar(); invalidate("veiculos", "rotas", "rotas-disponiveis-passageiro"); },
     onError: (e) => toast.error(mensagemErro(e)),
   });
 
@@ -137,7 +143,7 @@ function Veiculos() {
           <div className="space-y-2"><Label>Lugares</Label><Input type="number" min={1} value={lugares} onChange={(e) => setLugares(Number(e.target.value))} /></div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!valido || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar" : "Criar veículo"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -145,16 +151,22 @@ function Veiculos() {
         <CardHeader><CardTitle>Veículos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((v) => {
-            const mm = separarMarcaModelo(v.nome);
+            const marca = v.marca?.trim() ?? "";
+            const modelo = v.modelo?.trim() ?? "";
+            const camposRever = !marca || !modelo;
             return (
               <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                <span><span className="font-medium">{mm.marca}</span> {mm.modelo} <span className="text-muted-foreground">{v.matricula}</span></span>
+                <span>
+                  {marca && modelo ? <><span className="font-medium">{marca}</span> {modelo}</> : <span className="font-medium">{v.nome}</span>}
+                  <span className="ml-2 text-muted-foreground">{v.matricula}</span>
+                  {camposRever && <Badge variant="outline" className="ml-2">Rever marca/modelo</Badge>}
+                </span>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{v.lugares} lugares</Badge>
                   <select className="h-9 rounded-md border bg-background px-2 text-xs" value={v.estado} onChange={(e) => mudarEstado.mutate({ id: v.id, estado: e.target.value })}>
                     {Object.entries(ESTADOS_VEICULO).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
                   </select>
-                  <Button size="sm" variant="outline" onClick={() => { setEditId(v.id); setMarca(mm.marca); setModelo(mm.modelo); setMatricula(v.matricula); setLugares(v.lugares); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setEditId(v.id); setMarca(v.marca ?? ""); setModelo(v.modelo ?? ""); setMatricula(v.matricula); setLugares(v.lugares); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
                   <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => { if (window.confirm(`Eliminar o veículo ${v.matricula}? Se tiver rotas associadas, a eliminação será recusada — use o estado "inactivo".`)) eliminar.mutate(v.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
                 </div>
               </div>
@@ -223,7 +235,7 @@ function Delegacoes() {
           <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar delegação"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -301,7 +313,7 @@ function Rotas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pontos_predefinidos")
-        .select("id, nome")
+        .select("id, nome, latitude, longitude, coordenadas_verificadas")
         .eq("activo", true)
         .order("nome");
       if (error) throw error;
@@ -347,6 +359,19 @@ function Rotas() {
   const [previstos, setPrevistos] = useState("");
   const [dataViagem, setDataViagem] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date()));
 
+  const limparFormularioRota = () => {
+    setNome("");
+    setVeiculoId("");
+    setMotoristaId("");
+    setPartidaId("");
+    setChegadaId("");
+    setParagemId("");
+    setInicio("");
+    setFim("");
+    setPrevistos("");
+    setDataViagem(new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date()));
+  };
+
   const criar = useMutation({
     mutationFn: async () => {
       if (!dataViagem) throw new Error("Defina a data da viagem.");
@@ -354,6 +379,11 @@ function Rotas() {
       if (partidaId === chegadaId) throw new Error("A partida e a chegada devem ser diferentes.");
       if (paragemId && (paragemId === partidaId || paragemId === chegadaId)) {
         throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
+      }
+      const idsPontos = [partidaId, ...(paragemId ? [paragemId] : []), chegadaId];
+      const pontosEscolhidos = idsPontos.map((id) => pontos?.find((p) => p.id === id));
+      if (pontosEscolhidos.some((p) => !p || p.latitude === null || p.longitude === null || !p.coordenadas_verificadas)) {
+        throw new Error("Um ou mais pontos ainda não têm coordenadas verificadas. Peça ao administrador para posicionar os pontos no mapa.");
       }
 
       const { data: rotaCriada, error } = await supabase.rpc("criar_rota_operacional", semIndefinidos({
@@ -371,6 +401,26 @@ function Rotas() {
       if (!rotaCriada) throw new Error("A rota foi criada sem devolver o identificador.");
       const { error: erroData } = await supabase.from("rotas").update({ data_viagem: dataViagem }).eq("id", rotaCriada);
       if (erroData) throw erroData;
+
+      const { data: paragensCriadas, error: erroParagens } = await supabase
+        .from("paragens")
+        .select("id, ordem")
+        .eq("rota_id", rotaCriada)
+        .order("ordem");
+      let coordenadasSincronizadas = !erroParagens && (paragensCriadas?.length ?? 0) === pontosEscolhidos.length;
+      for (const paragem of paragensCriadas ?? []) {
+        const ponto = pontosEscolhidos[paragem.ordem - 1];
+        if (!ponto || ponto.latitude === null || ponto.longitude === null) {
+          coordenadasSincronizadas = false;
+          continue;
+        }
+        const { error: erroCoordenadas } = await supabase
+          .from("paragens")
+          .update({ latitude: ponto.latitude, longitude: ponto.longitude })
+          .eq("id", paragem.id);
+        if (erroCoordenadas) coordenadasSincronizadas = false;
+      }
+
       if (paragemId && inicio && fim) {
         const minutos = (valor: string) => Number(valor.slice(0, 2)) * 60 + Number(valor.slice(3, 5));
         const inicioMin = minutos(inicio);
@@ -390,17 +440,13 @@ function Rotas() {
           if (erroHoraParagem) throw erroHoraParagem;
         }
       }
+      return { coordenadasSincronizadas };
     },
-    onSuccess: () => {
+    onSuccess: ({ coordenadasSincronizadas }) => {
       toast.success("Rota criada");
-      setNome("");
-      setPartidaId("");
-      setChegadaId("");
-      setParagemId("");
-      setInicio("");
-      setFim("");
-      setPrevistos("");
-      invalidate("rotas");
+      if (!coordenadasSincronizadas) toast.warning("A rota foi criada, mas não foi possível sincronizar todas as coordenadas das paragens. Reveja as permissões e volte a guardar os pontos verificados no painel de administração.");
+      limparFormularioRota();
+      invalidate("rotas", "rotas-disponiveis-passageiro");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -465,10 +511,11 @@ function Rotas() {
             <Label>Passageiros previstos</Label>
             <Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} />
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-wrap items-end gap-2">
             <Button disabled={!partidaId || !chegadaId || criar.isPending} onClick={() => criar.mutate()}>
               {criar.isPending ? "A criar..." : "Criar rota"}
             </Button>
+            <Button variant="ghost" disabled={criar.isPending} onClick={limparFormularioRota}><X className="mr-1 h-4 w-4" />Cancelar / limpar</Button>
           </div>
         </CardContent>
       </Card>
@@ -595,7 +642,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     },
     onSuccess: () => {
       toast.success("Estado da rota actualizado");
-      invalidate("rotas", "reconciliacao", "viagens");
+      invalidate("rotas", "reconciliacao", "viagens", "rotas-disponiveis-passageiro");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -806,7 +853,7 @@ function Passageiros() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar passageiro"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -854,6 +901,13 @@ function Viagens() {
   const rota = rotas?.find((r) => r.id === rotaId);
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
 
+  const limparAtribuicao = () => {
+    setRotaId("");
+    setPassageiroId("");
+    setEmbarqueId("");
+    setDesembarqueId("");
+  };
+
   const { data: viagens } = useQuery({
     queryKey: ["viagens"],
     queryFn: async () => {
@@ -876,7 +930,7 @@ function Viagens() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Bilhete QR gerado"); invalidate("viagens", "reconciliacao"); },
+    onSuccess: () => { toast.success("Bilhete QR gerado"); limparAtribuicao(); invalidate("viagens", "reconciliacao"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -886,6 +940,15 @@ function Viagens() {
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Bilhete pendente cancelado"); invalidate("viagens", "reconciliacao", "rotas", "minhas-viagens"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+
+  const eliminarBilhete = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("viagens_passageiro").delete().eq("id", id).eq("estado", "recusada");
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Bilhete cancelado eliminado"); invalidate("viagens", "reconciliacao", "rotas", "minhas-viagens"); },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 
@@ -922,10 +985,11 @@ function Viagens() {
               {paragens.map((p) => <option key={p.id} value={p.id}>{p.ordem}. {p.nome}</option>)}
             </select>
           </div>
-          <div className="md:col-span-4">
+          <div className="flex flex-wrap gap-2 md:col-span-4">
             <Button disabled={!rotaId || !passageiroId || !embarqueId || atribuir.isPending} onClick={() => atribuir.mutate()}>
               Gerar bilhete QR
             </Button>
+            <Button variant="ghost" disabled={atribuir.isPending} onClick={limparAtribuicao}><X className="mr-1 h-4 w-4" />Cancelar / limpar</Button>
           </div>
         </CardContent>
       </Card>
@@ -946,6 +1010,7 @@ function Viagens() {
                   <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Ligação copiada"); }}>Copiar ligação</Button>
                   <Button size="sm" variant="secondary" asChild><a href={`/p/${v.token_qr}`} target="_blank" rel="noreferrer">Ver QR</a></Button>
                   {v.estado === "pendente" && <Button size="sm" variant="destructive" disabled={cancelarBilhete.isPending} onClick={() => { if (window.confirm("Cancelar este bilhete pendente?")) cancelarBilhete.mutate(v.id); }}><X className="mr-1 h-4 w-4" />Cancelar bilhete</Button>}
+                  {v.estado === "recusada" && <Button size="sm" variant="destructive" disabled={eliminarBilhete.isPending} onClick={() => { if (window.confirm("Eliminar definitivamente este bilhete já cancelado? Esta acção não pode ser desfeita.")) eliminarBilhete.mutate(v.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar cancelado</Button>}
                 </div>
               </div>
             );

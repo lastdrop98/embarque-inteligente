@@ -1030,78 +1030,197 @@ function PontosPredefinidos() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pontos_predefinidos")
-        .select("id, nome, activo")
+        .select("id, nome, activo, latitude, longitude, coordenadas_verificadas")
         .order("nome");
       if (error) throw error;
       return data ?? [];
     },
   });
 
-  const criar = useMutation({
-    mutationFn: async (valor: string) => {
-      const limpo = valor.trim();
-      if (!limpo) throw new Error("Indica o nome do ponto.");
-      const { error } = await supabase.from("pontos_predefinidos").insert({ nome: limpo, activo: true });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [novoPonto, setNovoPonto] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [localizacaoConfirmada, setLocalizacaoConfirmada] = useState(false);
+
+  const limpar = () => {
+    setEditId(null);
+    setNovoPonto("");
+    setLatitude("");
+    setLongitude("");
+    setLocalizacaoConfirmada(false);
+  };
+
+  const guardar = useMutation({
+    mutationFn: async () => {
+      const nome = novoPonto.trim();
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      if (!nome) throw new Error("Indica o nome do ponto.");
+      if (!localizacaoConfirmada || !latitude.trim() || !longitude.trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error("Escolhe a localização do ponto no mapa antes de guardar.");
+      }
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        throw new Error("As coordenadas estão fora dos limites válidos.");
+      }
+      const campos = {
+        nome,
+        latitude: lat,
+        longitude: lng,
+        coordenadas_verificadas: true,
+      };
+      const nomeAnterior = editId ? pontos?.find((p) => p.id === editId)?.nome : null;
+      if (editId && nomeAnterior && nomeAnterior !== nome) {
+        const { data: paragensComNomeAntigo, error: erroVerificarNome } = await supabase
+          .from("paragens")
+          .select("id")
+          .eq("nome", nomeAnterior)
+          .limit(1);
+        if (erroVerificarNome) throw erroVerificarNome;
+        if (paragensComNomeAntigo?.length) {
+          throw new Error("Este ponto já aparece em rotas ou histórico. Para preservar os registos antigos, não altere o nome; actualize as coordenadas ou desactive o ponto.");
+        }
+      }
+      const { error } = editId
+        ? await supabase.from("pontos_predefinidos").update(campos).eq("id", editId)
+        : await supabase.from("pontos_predefinidos").insert({ ...campos, activo: true });
       if (error) throw error;
+      const { error: erroParagens } = await supabase
+        .from("paragens")
+        .update({ latitude: lat, longitude: lng })
+        .eq("nome", nomeAnterior ?? nome);
+      return { erroSincronizarParagens: erroParagens?.message ?? null };
     },
-    onSuccess: () => {
-      toast.success("Ponto predefinido criado.");
+    onSuccess: ({ erroSincronizarParagens }) => {
+      toast.success(editId ? "Ponto actualizado com coordenadas verificadas." : "Ponto criado com coordenadas verificadas.");
+      if (erroSincronizarParagens) toast.warning("O ponto foi guardado, mas algumas paragens de rotas antigas não foram actualizadas. Reveja as permissões e sincronize-as manualmente.");
+      limpar();
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  const [novoPonto, setNovoPonto] = useState("");
 
   const alternar = useMutation({
     mutationFn: async ({ id, activo }: { id: string; activo: boolean }) => {
       const { error } = await supabase.from("pontos_predefinidos").update({ activo }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const eliminar = useMutation({
     mutationFn: async (id: string) => {
+      const ponto = pontos?.find((item) => item.id === id);
+      if (!ponto) throw new Error("Não foi possível localizar o ponto seleccionado.");
+      const { data: paragensAssociadas, error: erroBusca } = await supabase
+        .from("paragens")
+        .select("id")
+        .eq("nome", ponto.nome)
+        .limit(1);
+      if (erroBusca) throw erroBusca;
+      if (paragensAssociadas?.length) throw new Error("Este ponto já está associado a rotas ou histórico. Desactive-o para impedir novas utilizações, em vez de o eliminar.");
       const { error } = await supabase.from("pontos_predefinidos").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Ponto removido.");
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message.includes("foreign key") || e.message.includes("violates") ? "Não é possível remover este ponto porque está associado a rotas ou viagens. Desactive-o para impedir novas utilizações." : e.message),
   });
+
+  const lat = latitude.trim() ? Number(latitude) : null;
+  const lng = longitude.trim() ? Number(longitude) : null;
+  const temCoordenadas = localizacaoConfirmada && lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Pontos predefinidos</CardTitle>
+        <CardTitle className="text-base">{editId ? "Editar ponto de embarque/desembarque" : "Pontos de embarque/desembarque"}</CardTitle>
         <p className="text-sm text-muted-foreground">
-          O Administrador cria e controla os pontos que podem ser escolhidos nas solicitações e nas rotas.
+          Cada ponto precisa de coordenadas seleccionadas no mapa. Os pontos antigos sem coordenadas devem ser editados e posicionados antes de serem considerados verificados.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nome do ponto</label>
+            <Input placeholder="Ex.: Terminal ou paragem" value={novoPonto} onChange={(e) => setNovoPonto(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Latitude</label>
+              <Input inputMode="decimal" type="number" min={-90} max={90} step="any" placeholder="-25.9655" value={latitude} onChange={(e) => { setLatitude(e.target.value); setLocalizacaoConfirmada(false); }} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Longitude</label>
+              <Input inputMode="decimal" type="number" min={-180} max={180} step="any" placeholder="32.5832" value={longitude} onChange={(e) => { setLongitude(e.target.value); setLocalizacaoConfirmada(false); }} />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Selecciona a posição real no mapa</p>
+          <p className="text-xs text-muted-foreground">Clica directamente no local correcto. O mapa não escolhe coordenadas automaticamente nem confirma o nome do local.</p>
+          <MapaVeiculos
+            altura={320}
+            paragens={temCoordenadas ? [{ id: editId ?? "novo-ponto", nome: novoPonto || "Ponto seleccionado", ordem: 1, latitude: lat, longitude: lng, destaque: true }] : []}
+            onCliqueMapa={(latClicada, lngClicada) => {
+              setLatitude(latClicada.toFixed(6));
+              setLongitude(lngClicada.toFixed(6));
+              setLocalizacaoConfirmada(true);
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            {temCoordenadas ? `Posição seleccionada: ${lat!.toFixed(6)}, ${lng!.toFixed(6)}` : "Ainda não foi seleccionada uma posição válida."}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <Input className="max-w-sm" placeholder="Nome do ponto" value={novoPonto} onChange={(e) => setNovoPonto(e.target.value)} />
-          <Button disabled={!novoPonto.trim() || criar.isPending} onClick={() => criar.mutate(novoPonto)}>
-            Adicionar ponto
+          <Button disabled={!novoPonto.trim() || !temCoordenadas || guardar.isPending} onClick={() => guardar.mutate()}>
+            {guardar.isPending ? "A guardar..." : editId ? "Guardar alterações" : "Adicionar ponto"}
           </Button>
+          <Button variant="ghost" onClick={limpar}>{editId ? "Cancelar edição" : "Limpar campos"}</Button>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {pontos?.map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-              <span className={p.activo ? "" : "text-muted-foreground line-through"}>{p.nome}</span>
-              <div className="flex gap-1">
+            <div key={p.id} className="space-y-2 rounded-md border px-3 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className={p.activo ? "font-medium" : "text-muted-foreground line-through"}>{p.nome}</span>
+                <Badge variant={p.coordenadas_verificadas && p.latitude !== null && p.longitude !== null ? "secondary" : "destructive"}>
+                  {p.coordenadas_verificadas && p.latitude !== null && p.longitude !== null ? "Coordenadas verificadas" : "Localização por definir"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {p.latitude !== null && p.longitude !== null ? `${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}` : "Sem coordenadas guardadas"}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="outline" onClick={() => {
+                  setEditId(p.id);
+                  setNovoPonto(p.nome);
+                  setLatitude(p.latitude === null ? "" : String(p.latitude));
+                  setLongitude(p.longitude === null ? "" : String(p.longitude));
+                  setLocalizacaoConfirmada(Boolean(p.coordenadas_verificadas && p.latitude !== null && p.longitude !== null));
+                }}>Editar / posicionar</Button>
                 <Button size="sm" variant="outline" disabled={alternar.isPending} onClick={() => alternar.mutate({ id: p.id, activo: !p.activo })}>
                   {p.activo ? "Desactivar" : "Activar"}
                 </Button>
                 <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => {
-                  if (window.confirm(`Remover o ponto "${p.nome}"?`)) eliminar.mutate(p.id);
-                }}>
-                  Remover
-                </Button>
+                  if (window.confirm(`Remover o ponto "${p.nome}"? Se estiver associado a rotas ou viagens, a base de dados impedirá a remoção.`)) eliminar.mutate(p.id);
+                }}>Eliminar</Button>
               </div>
             </div>
           ))}

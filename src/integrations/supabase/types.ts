@@ -374,22 +374,31 @@ export type Database = {
       pontos_predefinidos: {
         Row: {
           activo: boolean
+          coordenadas_verificadas: boolean
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           nome: string
           updated_at: string
         }
         Insert: {
           activo?: boolean
+          coordenadas_verificadas?: boolean
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           nome: string
           updated_at?: string
         }
         Update: {
           activo?: boolean
+          coordenadas_verificadas?: boolean
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           nome?: string
           updated_at?: string
         }
@@ -586,7 +595,9 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           lugares: number
+          marca: string | null
           matricula: string
+          modelo: string | null
           nome: string
           posicao_updated_at: string | null
         }
@@ -597,7 +608,9 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           lugares?: number
+          marca?: string | null
           matricula?: string
+          modelo?: string | null
           nome: string
           posicao_updated_at?: string | null
         }
@@ -608,7 +621,9 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           lugares?: number
+          marca?: string | null
           matricula?: string
+          modelo?: string | null
           nome?: string
           posicao_updated_at?: string | null
         }
