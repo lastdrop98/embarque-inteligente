@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -79,12 +79,15 @@ export default function MapaVeiculos({
   tracado = false,
   altura = 280,
   onCliqueMapa,
+  objetivoVeiculoId,
 }: {
   veiculos?: PosVeiculo[];
   paragens?: PosParagem[];
   tracado?: boolean;
   altura?: number;
   onCliqueMapa?: (lat: number, lng: number) => void;
+  /** Paragem que o veículo está a alcançar neste momento. */
+  objetivoVeiculoId?: string;
 }) {
   const vs = veiculos.filter(
     (v): v is PosVeiculo & { latitude: number; longitude: number } => v.latitude != null && v.longitude != null,
@@ -103,6 +106,44 @@ export default function MapaVeiculos({
   );
 
   const centro: Ponto = pontos[0] ?? CENTRO_OMISSAO;
+  const veiculoEmSeguimento = vs[0];
+  const objetivo = ps.find((p) => p.id === objetivoVeiculoId);
+  const [percursoActivo, setPercursoActivo] = useState<Ponto[]>([]);
+
+  // Desenha o percurso rodoviário entre a posição GPS actual e a próxima paragem.
+  // Se o serviço de rotas estiver indisponível, mantém uma linha directa como fallback.
+  useEffect(() => {
+    if (!veiculoEmSeguimento || !objetivo || !objetivoVeiculoId) {
+      setPercursoActivo([]);
+      return;
+    }
+    const origem: Ponto = [veiculoEmSeguimento.latitude, veiculoEmSeguimento.longitude];
+    const destino: Ponto = [objetivo.latitude, objetivo.longitude];
+    setPercursoActivo([origem, destino]);
+    const controller = new AbortController();
+    const url = `https://router.project-osrm.org/route/v1/driving/${veiculoEmSeguimento.longitude},${veiculoEmSeguimento.latitude};${objetivo.longitude},${objetivo.latitude}?overview=full&geometries=geojson`;
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Serviço de rotas indisponível");
+        return response.json();
+      })
+      .then((data: { routes?: { geometry?: { coordinates?: [number, number][] } }[] }) => {
+        const coords = data.routes?.[0]?.geometry?.coordinates;
+        if (coords && coords.length > 1) setPercursoActivo(coords.map(([lng, lat]) => [lat, lng]));
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        // O fallback directo já foi colocado no estado acima.
+      });
+    return () => controller.abort();
+  }, [
+    objetivoVeiculoId,
+    veiculoEmSeguimento?.id,
+    veiculoEmSeguimento?.latitude,
+    veiculoEmSeguimento?.longitude,
+    objetivo?.latitude,
+    objetivo?.longitude,
+  ]);
 
   return (
     <div className="overflow-hidden rounded-lg border" style={{ height: altura }}>
@@ -122,7 +163,10 @@ export default function MapaVeiculos({
         <AjustarVista pontos={pontos} />
         {onCliqueMapa && <CliqueMapa onClique={onCliqueMapa} />}
         {tracado && pontosParagens.length > 1 && (
-          <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.7 }} />
+          <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.55, dashArray: "7 6" }} />
+        )}
+        {objetivoVeiculoId && percursoActivo.length > 1 && (
+          <Polyline positions={percursoActivo} pathOptions={{ color: "hsl(142 72% 35%)", weight: 5, opacity: 0.9 }} />
         )}
         {ps.map((p) => (
           <Marker key={p.id} position={[p.latitude, p.longitude]} icon={iconeParagem(p.ordem, p.destaque)}>
