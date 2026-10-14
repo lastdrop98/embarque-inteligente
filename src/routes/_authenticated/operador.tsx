@@ -13,6 +13,7 @@ import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
 import { Pencil, Trash2, X, Save } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { juntarMarcaModelo, separarMarcaModelo, mensagemErro } from "@/lib/veiculo";
 
 export const Route = createFileRoute("/_authenticated/operador")({
   head: () => ({
@@ -83,22 +84,33 @@ function useVeiculos() {
 function Veiculos() {
   const { data } = useVeiculos();
   const invalidate = useInvalidate();
-  const [nome, setNome] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [marca, setMarca] = useState("");
+  const [modelo, setModelo] = useState("");
   const [matricula, setMatricula] = useState("");
   const [lugares, setLugares] = useState(20);
 
-  const criar = useMutation({
+  const limpar = () => { setEditId(null); setMarca(""); setModelo(""); setMatricula(""); setLugares(20); };
+
+  const guardar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("veiculos").insert({ nome, matricula, lugares, estado: "disponivel" });
+      const campos = { nome: juntarMarcaModelo(marca, modelo), matricula: matricula.trim(), lugares };
+      const { error } = editId
+        ? await supabase.from("veiculos").update(campos).eq("id", editId)
+        : await supabase.from("veiculos").insert({ ...campos, estado: "disponivel" });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Veículo criado");
-      setNome("");
-      setMatricula("");
-      invalidate("veiculos");
+    onSuccess: () => { toast.success(editId ? "Veículo actualizado" : "Veículo criado"); limpar(); invalidate("veiculos", "rotas"); },
+    onError: (e) => toast.error(mensagemErro(e)),
+  });
+
+  const eliminar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("veiculos").delete().eq("id", id);
+      if (error) throw error;
     },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("Veículo eliminado"); invalidate("veiculos"); },
+    onError: (e) => toast.error(mensagemErro(e)),
   });
 
   const mudarEstado = useMutation({
@@ -107,40 +119,47 @@ function Veiculos() {
       if (error) throw error;
     },
     onSuccess: () => invalidate("veiculos"),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => toast.error(mensagemErro(e)),
   });
+
+  const valido = marca.trim() && modelo.trim() && matricula.trim() && lugares >= 1;
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle>Novo veículo</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{editId ? "Editar veículo" : "Novo veículo"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2"><Label>Marca</Label><Input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Ex: Toyota" /></div>
+            <div className="space-y-2"><Label>Modelo</Label><Input value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder="Ex: Coaster" /></div>
+          </div>
           <div className="space-y-2"><Label>Matrícula</Label><Input value={matricula} onChange={(e) => setMatricula(e.target.value)} /></div>
           <div className="space-y-2"><Label>Lugares</Label><Input type="number" min={1} value={lugares} onChange={(e) => setLugares(Number(e.target.value))} /></div>
-          <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar veículo</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!valido || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar" : "Criar veículo"}</Button>
+            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+          </div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle>Veículos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          {data?.length ? data.map((v) => (
-            <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-              <span>{v.nome} <span className="text-muted-foreground">{v.matricula}</span></span>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{v.lugares} lugares</Badge>
-                <select
-                  className="h-8 rounded-md border bg-background px-2 text-xs"
-                  value={v.estado}
-                  onChange={(e) => mudarEstado.mutate({ id: v.id, estado: e.target.value })}
-                >
-                  {Object.entries(ESTADOS_VEICULO).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>{rotulo}</option>
-                  ))}
-                </select>
+          {data?.length ? data.map((v) => {
+            const mm = separarMarcaModelo(v.nome);
+            return (
+              <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                <span><span className="font-medium">{mm.marca}</span> {mm.modelo} <span className="text-muted-foreground">{v.matricula}</span></span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">{v.lugares} lugares</Badge>
+                  <select className="h-9 rounded-md border bg-background px-2 text-xs" value={v.estado} onChange={(e) => mudarEstado.mutate({ id: v.id, estado: e.target.value })}>
+                    {Object.entries(ESTADOS_VEICULO).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
+                  </select>
+                  <Button size="sm" variant="outline" onClick={() => { setEditId(v.id); setMarca(mm.marca); setModelo(mm.modelo); setMatricula(v.matricula); setLugares(v.lugares); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+                  <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => { if (window.confirm(`Eliminar o veículo ${v.matricula}? Se tiver rotas associadas, a eliminação será recusada — use o estado "inactivo".`)) eliminar.mutate(v.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
+                </div>
               </div>
-            </div>
-          )) : <p className="text-sm text-muted-foreground">Ainda não há veículos.</p>}
+            );
+          }) : <p className="text-sm text-muted-foreground">Ainda não há veículos.</p>}
         </CardContent>
       </Card>
     </div>
