@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents 
 import L from "leaflet";
 import type { Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PosVeiculo = {
   id: string;
@@ -74,7 +75,7 @@ function CliqueMapa({ onClique }: { onClique: (lat: number, lng: number) => void
   return null;
 }
 
-type ResultadoPesquisa = { place_id: number; display_name: string; lat: string; lon: string };
+type ResultadoPesquisa = { place_id: string; display_name: string; lat: string | null; lon: string | null; origem: "guardado" | "mapa"; verificado?: boolean };
 
 function GuardarMapa({ onReady }: { onReady: (map: LeafletMap) => void }) {
   const map = useMap();
@@ -140,33 +141,79 @@ export default function MapaVeiculos({
   const [pesquisa, setPesquisa] = useState("");
   const [resultadosPesquisa, setResultadosPesquisa] = useState<ResultadoPesquisa[]>([]);
   const [pesquisando, setPesquisando] = useState(false);
+  const [mensagemPesquisa, setMensagemPesquisa] = useState("");
   const [localPesquisado, setLocalPesquisado] = useState<Ponto | null>(null);
   const guardarMapa = useCallback((instancia: LeafletMap) => setMapa(instancia), []);
   const procurarLocal = async () => {
     const termo = pesquisa.trim();
-    if (!termo) return;
+    if (!termo) {
+      setResultadosPesquisa([]);
+      setMensagemPesquisa("Introduza o nome de um local para pesquisar.");
+      return;
+    }
     setPesquisando(true);
+    setMensagemPesquisa("");
     try {
-      const params = new URLSearchParams({ format: "jsonv2", q: termo, limit: "5", countrycodes: "mz" });
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) throw new Error("Pesquisa de locais indisponível.");
-      const locais = await response.json() as ResultadoPesquisa[];
-      setResultadosPesquisa(locais);
-      if (!locais.length) throw new Error("Não foram encontrados locais para essa pesquisa.");
+      // Primeiro pesquisar os pontos já guardados. A existência de coordenadas
+      // não deve impedir a pesquisa pelo nome.
+      const { data: guardados, error: erroGuardados } = await supabase
+        .from("pontos_predefinidos")
+        .select("id, nome, latitude, longitude, coordenadas_verificadas")
+        .eq("activo", true)
+        .ilike("nome", `%${termo.replace(/[%_]/g, "\\$&")}%`)
+        .order("nome")
+        .limit(10);
+      if (erroGuardados) console.warn("[mapa] não foi possível pesquisar pontos guardados:", erroGuardados.message);
+
+      const locaisGuardados: ResultadoPesquisa[] = (guardados ?? [])
+        .map((p) => ({
+          place_id: `guardado-${p.id}`,
+          display_name: p.nome,
+          lat: p.latitude == null ? null : String(p.latitude),
+          lon: p.longitude == null ? null : String(p.longitude),
+          origem: "guardado" as const,
+          verificado: Boolean(p.coordenadas_verificadas),
+        }));
+
+      let locaisExternos: ResultadoPesquisa[] = [];
+      try {
+        const params = new URLSearchParams({ format: "jsonv2", q: termo, limit: "5", countrycodes: "mz" });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+          headers: { Accept: "application/json" },
+        });
+        if (response.ok) {
+          const dados = await response.json() as { place_id: number; display_name: string; lat: string; lon: string }[];
+          locaisExternos = dados.map((p) => ({ ...p, place_id: `mapa-${p.place_id}`, origem: "mapa" as const }));
+        }
+      } catch (error) {
+        console.warn("[mapa] pesquisa externa indisponível:", error);
+      }
+
+      const combinados = [...locaisGuardados, ...locaisExternos];
+      setResultadosPesquisa(combinados);
+      if (!combinados.length) setMensagemPesquisa("Nenhum local encontrado. Verifique a escrita ou tente um nome mais específico.");
+      else setMensagemPesquisa(`${combinados.length} resultado(s). Seleccione um local para centrar o mapa.`);
     } catch (error) {
       setResultadosPesquisa([]);
+      setMensagemPesquisa("Não foi possível pesquisar locais agora. Verifique a ligação e tente novamente.");
       console.error("[mapa] pesquisa:", error);
     } finally {
       setPesquisando(false);
     }
   };
   const escolherLocal = (local: ResultadoPesquisa) => {
+     setPesquisa(local.display_name);
+    setResultadosPesquisa([]);
+    if (local.lat == null || local.lon == null || !Number.isFinite(Number(local.lat)) || !Number.isFinite(Number(local.lon))) {
+      setLocalPesquisado(null);
+      setMensagemPesquisa(local.origem === "guardado"
+        ? `O ponto guardado “${local.display_name}” não tem coordenadas completas. Edite o ponto e indique a posição no mapa antes de o usar numa rota.`
+        : "Este resultado não tem coordenadas válidas. Pesquise outro local.");
+      return;
+    }
     const ponto: Ponto = [Number(local.lat), Number(local.lon)];
     setLocalPesquisado(ponto);
-    setPesquisa(local.display_name);
-    setResultadosPesquisa([]);
+    setMensagemPesquisa(local.origem === "guardado" ? (local.verificado ? "Ponto guardado verificado." : "Ponto guardado ainda não verificado.") : "Local encontrado no mapa; confirme a posição antes de o usar numa rota.");
     mapa?.setView(ponto, 16, { animate: true });
   };
   // Recalcula a rota rodoviária a cada ~100 m, sem sobrecarregar o serviço público de rotas.
@@ -301,11 +348,13 @@ export default function MapaVeiculos({
                 className="block w-full border-b px-3 py-2 text-left text-xs text-slate-800 last:border-0 hover:bg-slate-100"
                 onClick={() => escolherLocal(local)}
               >
-                {local.display_name}
+                <span className="block font-medium">{local.display_name}</span>
+                <span className="mt-0.5 block text-[10px] text-slate-500">{local.origem === "guardado" ? (local.verificado ? "Ponto guardado · coordenadas verificadas" : "Ponto guardado · coordenadas por verificar") : "Resultado do mapa · não é um ponto guardado"}</span>
               </button>
             ))}
           </div>
         )}
+        {mensagemPesquisa && <p role="status" className="rounded-lg border bg-white/95 px-3 py-2 text-xs text-slate-700 shadow">{mensagemPesquisa}</p>}
       </div>
     </div>
     {objetivo && objetivoVeiculoId && (
@@ -313,7 +362,7 @@ export default function MapaVeiculos({
         <span className="font-medium text-foreground">Próxima paragem: {objetivo.nome}</span>
         {estimativaPercurso
           ? ` · ${(estimativaPercurso.distanciaMetros / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })} km · cerca de ${Math.max(1, Math.round(estimativaPercurso.duracaoSegundos / 60))} min, estimativa sem trânsito em tempo real`
-          : " · percurso rodoviário aproximado"}
+          : " · percurso rodoviário aproximado; sem dados de trânsito em tempo real"}
       </div>
     )}
     </div>
