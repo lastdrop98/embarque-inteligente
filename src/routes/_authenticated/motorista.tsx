@@ -396,6 +396,7 @@ function MotoristaPage() {
                 veiculos={rota.veiculos ? [rota.veiculos as PosVeiculo] : []}
                 paragens={paragens.map((p) => ({ ...p, destaque: p.id === proximaParagem?.id }))}
                 tracado
+                objetivoVeiculoId={proximaParagem?.id}
                 altura={300}
               />
             </CardContent>
@@ -574,6 +575,54 @@ function MotoristaPage() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {!rota && (
+        <Card className="animate-premium-in overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-5 w-5 text-primary" />
+              Histórico de viagens
+            </CardTitle>
+            <Badge variant="secondary">{rotasHistorico.length}</Badge>
+          </CardHeader>
+          <CardContent>
+            {rotasHistorico.length ? (
+              <div className="space-y-2">
+                {rotasHistorico.map((r) => (
+                  <div key={r.id} className="flex flex-col gap-3 rounded-2xl border bg-muted/20 p-3 sm:flex-row sm:items-center">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <BusFront className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{r.nome}</p>
+                      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><Clock3 className="h-3 w-3" />{r.created_at ? new Date(r.created_at).toLocaleDateString("pt-PT") : "—"}</span>
+                        <span className="inline-flex items-center gap-1"><Activity className="h-3 w-3" />{String(r.estado).replaceAll("_", " ")}</span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+                      onClick={() => void removerDoHistorico(r.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Remover
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed p-8 text-center">
+                <History className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                <p className="mt-2 text-sm font-medium">Sem viagens anteriores</p>
+                <p className="mt-1 text-xs text-muted-foreground">As viagens concluídas aparecerão aqui.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
