@@ -1069,13 +1069,20 @@ function PontosPredefinidos() {
         longitude: lng,
         coordenadas_verificadas: true,
       };
+      const nomeAnterior = editId ? pontos?.find((p) => p.id === editId)?.nome : null;
       const { error } = editId
         ? await supabase.from("pontos_predefinidos").update(campos).eq("id", editId)
         : await supabase.from("pontos_predefinidos").insert({ ...campos, activo: true });
       if (error) throw error;
+      const { error: erroParagens } = await supabase
+        .from("paragens")
+        .update({ nome, latitude: lat, longitude: lng })
+        .eq("nome", nomeAnterior ?? nome);
+      return { erroSincronizarParagens: erroParagens?.message ?? null };
     },
-    onSuccess: () => {
+    onSuccess: ({ erroSincronizarParagens }) => {
       toast.success(editId ? "Ponto actualizado com coordenadas verificadas." : "Ponto criado com coordenadas verificadas.");
+      if (erroSincronizarParagens) toast.warning("O ponto foi guardado, mas algumas paragens de rotas antigas não foram actualizadas. Reveja as permissões e sincronize-as manualmente.");
       limpar();
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
       qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
