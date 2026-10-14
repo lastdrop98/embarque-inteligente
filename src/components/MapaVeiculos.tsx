@@ -132,13 +132,14 @@ export default function MapaVeiculos({
       })
       .then((data: { routes?: { geometry?: { coordinates?: [number, number][] } }[] }) => {
         const coords = data.routes?.[0]?.geometry?.coordinates;
-        if (coords && coords.length > 1) setPercursoActivo(coords.map(([lng, lat]) => [lat, lng]));
+        if (coords && coords.length > 1) setPercursoActivo(coords.map(([lng, lat]): Ponto => [lat, lng]));
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
         // O fallback directo já foi colocado no estado acima.
       });
     return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     objetivoVeiculoId,
     veiculoEmSeguimento?.id,
