@@ -2,11 +2,14 @@
 // Marca e modelo são guardados juntos em "nome" ("Marca Modelo") até existir
 // migração com colunas próprias (ver docs/proposta-migracao-pontos-veiculos.sql).
 export function juntarMarcaModelo(marca: string, modelo: string) {
-  return `${marca.trim()} ${modelo.trim()}`.trim();
+  return [marca.trim(), modelo.trim()].filter(Boolean).join(" — ");
 }
 
 export function separarMarcaModelo(nome: string | null | undefined) {
   const limpo = (nome ?? "").trim().replace(/\s+/g, " ");
+  const separador = limpo.split(" — ");
+  if (separador.length >= 2) return { marca: separador.shift() ?? "", modelo: separador.join(" — ") };
+  // Compatibilidade com nomes legados sem separador: divisão heurística apenas para edição.
   const i = limpo.indexOf(" ");
   if (i < 0) return { marca: limpo, modelo: "" };
   return { marca: limpo.slice(0, i), modelo: limpo.slice(i + 1) };

@@ -182,43 +182,61 @@ function useDelegacoes() {
 function Delegacoes() {
   const { data } = useDelegacoes();
   const invalidate = useInvalidate();
+  const [editId, setEditId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState("");
   const [contacto, setContacto] = useState("");
+  const limpar = () => { setEditId(null); setNome(""); setTipo(""); setContacto(""); };
 
-  const criar = useMutation({
+  const guardar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("delegacoes").insert({ nome, tipo: tipo || null, contacto: contacto || null });
+      const campos = { nome: nome.trim(), tipo: tipo.trim() || null, contacto: contacto.trim() || null };
+      const { error } = editId
+        ? await supabase.from("delegacoes").update(campos).eq("id", editId)
+        : await supabase.from("delegacoes").insert(campos);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Delegação criada");
-      setNome("");
-      setTipo("");
-      setContacto("");
+      toast.success(editId ? "Delegação actualizada" : "Delegação criada");
+      limpar();
       invalidate("delegacoes", "passageiros");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+
+  const eliminar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("delegacoes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Delegação eliminada"); invalidate("delegacoes", "passageiros"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle>Nova delegação</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{editId ? "Editar delegação" : "Nova delegação"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Angola" /></div>
           <div className="space-y-2"><Label>Tipo</Label><Input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Ex: país, equipa, organização" /></div>
           <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
-          <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar delegação</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar delegação"}</Button>
+            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+          </div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle>Delegações</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((d) => (
-            <div key={d.id} className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
-              <span>{d.nome} {d.tipo && <span className="text-muted-foreground">· {d.tipo}</span>}</span>
-              {d.contacto && <span className="text-muted-foreground">{d.contacto}</span>}
+            <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+              <span>{d.nome} {d.tipo && <span className="text-muted-foreground">· {d.tipo}</span>} {d.contacto && <span className="text-muted-foreground">· {d.contacto}</span>}</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setEditId(d.id); setNome(d.nome); setTipo(d.tipo ?? ""); setContacto(d.contacto ?? ""); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+                <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => { if (window.confirm(`Eliminar a delegação "${d.nome}"? Se tiver passageiros associados, a base de dados poderá impedir a eliminação.`)) eliminar.mutate(d.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
+              </div>
             </div>
           )) : <p className="text-sm text-muted-foreground">Ainda não há delegações.</p>}
         </CardContent>
@@ -733,36 +751,43 @@ function Passageiros() {
   const { data } = usePassageiros();
   const { data: delegacoes } = useDelegacoes();
   const invalidate = useInvalidate();
+  const [editId, setEditId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [contacto, setContacto] = useState("");
   const [categoria, setCategoria] = useState("independente");
   const [delegacaoId, setDelegacaoId] = useState("");
+  const limpar = () => { setEditId(null); setNome(""); setContacto(""); setCategoria("independente"); setDelegacaoId(""); };
 
-  const criar = useMutation({
+  const guardar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("passageiros").insert({
-        nome,
-        contacto,
+      const campos = {
+        nome: nome.trim(),
+        contacto: contacto.trim(),
         categoria: categoria as Database["public"]["Enums"]["categoria_passageiro"],
         delegacao_id: delegacaoId || null,
-      });
+      };
+      const { error } = editId
+        ? await supabase.from("passageiros").update(campos).eq("id", editId)
+        : await supabase.from("passageiros").insert(campos);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Passageiro criado");
-      setNome("");
-      setContacto("");
-      setCategoria("independente");
-      setDelegacaoId("");
-      invalidate("passageiros");
+    onSuccess: () => { toast.success(editId ? "Passageiro actualizado" : "Passageiro criado"); limpar(); invalidate("passageiros", "viagens"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+
+  const eliminar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("passageiros").delete().eq("id", id);
+      if (error) throw error;
     },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("Passageiro eliminado"); invalidate("passageiros", "viagens"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle>Novo passageiro</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{editId ? "Editar passageiro" : "Novo passageiro"}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} /></div>
           <div className="space-y-2"><Label>Contacto</Label><Input value={contacto} onChange={(e) => setContacto(e.target.value)} /></div>
@@ -779,7 +804,10 @@ function Passageiros() {
               {delegacoes?.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}
             </select>
           </div>
-          <Button disabled={!nome || criar.isPending} onClick={() => criar.mutate()}>Criar passageiro</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={!nome.trim() || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar alterações" : "Criar passageiro"}</Button>
+            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+          </div>
         </CardContent>
       </Card>
       <Card>
@@ -788,12 +816,12 @@ function Passageiros() {
           {data?.length ? data.map((p) => (
             <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
               <span>{p.nome}</span>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{CATEGORIAS[p.categoria] ?? p.categoria}</Badge>
-                {(p.delegacoes as { nome: string } | null)?.nome && (
-                  <Badge variant="secondary">{(p.delegacoes as { nome: string }).nome}</Badge>
-                )}
+                {(p.delegacoes as { nome: string } | null)?.nome && <Badge variant="secondary">{(p.delegacoes as { nome: string }).nome}</Badge>}
                 <span className="text-muted-foreground">{p.contacto}</span>
+                <Button size="sm" variant="outline" onClick={() => { setEditId(p.id); setNome(p.nome); setContacto(p.contacto); setCategoria(p.categoria); setDelegacaoId(p.delegacao_id ?? ""); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+                <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => { if (window.confirm(`Eliminar o passageiro "${p.nome}"? Se tiver bilhetes/histórico associados, a eliminação será recusada.`)) eliminar.mutate(p.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
               </div>
             </div>
           )) : <p className="text-sm text-muted-foreground">Ainda não há passageiros.</p>}
@@ -852,6 +880,15 @@ function Viagens() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const cancelarBilhete = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("viagens_passageiro").update({ estado: "recusada" }).eq("id", id).eq("estado", "pendente");
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Bilhete pendente cancelado"); invalidate("viagens", "reconciliacao", "rotas", "minhas-viagens"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -908,6 +945,7 @@ function Viagens() {
                 <div className="ml-auto flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Ligação copiada"); }}>Copiar ligação</Button>
                   <Button size="sm" variant="secondary" asChild><a href={`/p/${v.token_qr}`} target="_blank" rel="noreferrer">Ver QR</a></Button>
+                  {v.estado === "pendente" && <Button size="sm" variant="destructive" disabled={cancelarBilhete.isPending} onClick={() => { if (window.confirm("Cancelar este bilhete pendente?")) cancelarBilhete.mutate(v.id); }}><X className="mr-1 h-4 w-4" />Cancelar bilhete</Button>}
                 </div>
               </div>
             );
