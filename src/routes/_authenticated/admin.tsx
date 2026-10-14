@@ -1086,6 +1086,9 @@ function PontosPredefinidos() {
       limpar();
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
       qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1098,6 +1101,9 @@ function PontosPredefinidos() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
       qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1111,6 +1117,9 @@ function PontosPredefinidos() {
       toast.success("Ponto removido.");
       qc.invalidateQueries({ queryKey: ["admin-pontos-predefinidos"] });
       qc.invalidateQueries({ queryKey: ["pontos-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["pontos-predefinidos-operador"] });
+      qc.invalidateQueries({ queryKey: ["pontos-embarque-predefinidos"] });
+      qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
     },
     onError: (e: Error) => toast.error(e.message.includes("foreign key") || e.message.includes("violates") ? "Não é possível remover este ponto porque está associado a rotas ou viagens. Desactive-o para impedir novas utilizações." : e.message),
   });
