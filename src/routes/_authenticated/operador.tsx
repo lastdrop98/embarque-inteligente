@@ -933,6 +933,15 @@ function Viagens() {
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 
+  const eliminarBilhete = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("viagens_passageiro").delete().eq("id", id).eq("estado", "recusada");
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Bilhete cancelado eliminado"); invalidate("viagens", "reconciliacao", "rotas", "minhas-viagens"); },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+
   return (
     <div className="space-y-6">
       <Card>
@@ -991,6 +1000,7 @@ function Viagens() {
                   <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Ligação copiada"); }}>Copiar ligação</Button>
                   <Button size="sm" variant="secondary" asChild><a href={`/p/${v.token_qr}`} target="_blank" rel="noreferrer">Ver QR</a></Button>
                   {v.estado === "pendente" && <Button size="sm" variant="destructive" disabled={cancelarBilhete.isPending} onClick={() => { if (window.confirm("Cancelar este bilhete pendente?")) cancelarBilhete.mutate(v.id); }}><X className="mr-1 h-4 w-4" />Cancelar bilhete</Button>}
+                  {v.estado === "recusada" && <Button size="sm" variant="destructive" disabled={eliminarBilhete.isPending} onClick={() => { if (window.confirm("Eliminar definitivamente este bilhete já cancelado? Esta acção não pode ser desfeita.")) eliminarBilhete.mutate(v.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar cancelado</Button>}
                 </div>
               </div>
             );
