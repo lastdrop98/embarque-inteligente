@@ -446,7 +446,7 @@ function Rotas() {
       toast.success("Rota criada");
       if (!coordenadasSincronizadas) toast.warning("A rota foi criada, mas não foi possível sincronizar todas as coordenadas das paragens. Reveja as permissões e volte a guardar os pontos verificados no painel de administração.");
       limparFormularioRota();
-      invalidate("rotas", "rotas-disponiveis-passageiro");
+      invalidate("rotas", "rotas-disponiveis-passageiro", "minhas-rotas", "minhas-viagens");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -596,12 +596,32 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         data_viagem: dataEdicao || null,
       }).eq("id", rota.id);
       if (error) throw error;
+
+      // Mantém os horários das paragens alinhados com o horário principal da rota.
+      const paragensOrdenadas = [...paragens].sort((a, b) => a.ordem - b.ordem);
+      const minutos = (valor: string) => Number(valor.slice(0, 2)) * 60 + Number(valor.slice(3, 5));
+      let inicioMin = inicioEdicao ? minutos(inicioEdicao) : null;
+      let fimMin = fimEdicao ? minutos(fimEdicao) : null;
+      if (inicioMin !== null && fimMin !== null && fimMin < inicioMin) fimMin += 24 * 60;
+      for (const [index, p] of paragensOrdenadas.entries()) {
+        let hora: string | null = p.hora_prevista;
+        if (index === 0) hora = inicioEdicao ? `${inicioEdicao}:00` : null;
+        else if (index === paragensOrdenadas.length - 1) hora = fimEdicao ? `${fimEdicao}:00` : null;
+        else if (inicioMin !== null && fimMin !== null) {
+          const meio = Math.round(inicioMin + ((fimMin - inicioMin) * index) / (paragensOrdenadas.length - 1)) % (24 * 60);
+          hora = `${String(Math.floor(meio / 60)).padStart(2, "0")}:${String(meio % 60).padStart(2, "0")}:00`;
+        }
+        if (hora !== p.hora_prevista) {
+          const { error: erroHora } = await supabase.from("paragens").update({ hora_prevista: hora }).eq("id", p.id);
+          if (erroHora) throw erroHora;
+        }
+      }
     },
     onSuccess: () => {
-      toast.success("Rota actualizada");
+      toast.success("Rota actualizada — horários sincronizados");
       setAEditar(false);
-      invalidate("rotas");
     },
+    onSettled: () => invalidate("rotas", "rotas-disponiveis-passageiro", "minhas-rotas", "minhas-viagens"),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -639,10 +659,24 @@ function RotaCard({ rota }: { rota: RotaRow }) {
         .update({ estado: novoEstado as Database["public"]["Enums"]["estado_rota"] })
         .eq("id", rota.id);
       if (error) throw error;
+
+      if (novoEstado === "cancelada") {
+        // Bilhetes pendentes passam a recusados e deixam de bloquear nova reserva.
+        const { error: erroBilhetes } = await supabase
+          .from("viagens_passageiro")
+          .update({ estado: "recusada" })
+          .eq("rota_id", rota.id)
+          .eq("estado", "pendente");
+        if (erroBilhetes) {
+          // Tenta repor o estado anterior da rota se a reconciliação dos bilhetes falhar.
+          await supabase.from("rotas").update({ estado: rota.estado as Database["public"]["Enums"]["estado_rota"] }).eq("id", rota.id);
+          throw erroBilhetes;
+        }
+      }
     },
     onSuccess: () => {
       toast.success("Estado da rota actualizado");
-      invalidate("rotas", "reconciliacao", "viagens", "rotas-disponiveis-passageiro");
+      invalidate("rotas", "reconciliacao", "viagens", "rotas-disponiveis-passageiro", "minhas-rotas", "minhas-viagens", "viagens-ativas-passageiro");
     },
     onError: (e: Error) => toast.error(e.message),
   });

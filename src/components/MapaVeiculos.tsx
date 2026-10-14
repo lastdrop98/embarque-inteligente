@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -35,9 +35,9 @@ function iconeVeiculo(estado?: string | null) {
   const cor = CORES[estado ?? "inactivo"] ?? CORES["inactivo"];
   return L.divIcon({
     className: "",
-    html: `<div style="background:${cor};width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${cor}55"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<div style="background:#fff;width:30px;height:30px;border-radius:10px;border:2px solid ${cor};box-shadow:0 2px 8px #0003;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1">🚌</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
   });
 }
 
@@ -79,12 +79,15 @@ export default function MapaVeiculos({
   tracado = false,
   altura = 280,
   onCliqueMapa,
+  objetivoVeiculoId,
 }: {
   veiculos?: PosVeiculo[];
   paragens?: PosParagem[];
   tracado?: boolean;
   altura?: number;
   onCliqueMapa?: (lat: number, lng: number) => void;
+  /** Paragem que o veículo está a alcançar neste momento. */
+  objetivoVeiculoId?: string;
 }) {
   const vs = veiculos.filter(
     (v): v is PosVeiculo & { latitude: number; longitude: number } => v.latitude != null && v.longitude != null,
@@ -103,8 +106,58 @@ export default function MapaVeiculos({
   );
 
   const centro: Ponto = pontos[0] ?? CENTRO_OMISSAO;
+  const veiculoEmSeguimento = vs[0];
+  const objetivo = ps.find((p) => p.id === objetivoVeiculoId);
+  const [percursoActivo, setPercursoActivo] = useState<Ponto[]>([]);
+  const [estimativaPercurso, setEstimativaPercurso] = useState<{ distanciaMetros: number; duracaoSegundos: number } | null>(null);
+  // Recalcula a rota rodoviária a cada ~100 m, sem sobrecarregar o serviço público de rotas.
+  const origemRotaLat = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.latitude * 1000) / 1000 : null;
+  const origemRotaLng = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.longitude * 1000) / 1000 : null;
+
+  // Desenha o percurso rodoviário entre a posição GPS actual e a próxima paragem.
+  // Se o serviço de rotas estiver indisponível, mantém uma linha directa como fallback.
+  useEffect(() => {
+    if (!veiculoEmSeguimento || !objetivo || !objetivoVeiculoId) {
+      setPercursoActivo([]);
+      return;
+    }
+    const origem: Ponto = [veiculoEmSeguimento.latitude, veiculoEmSeguimento.longitude];
+    const destino: Ponto = [objetivo.latitude, objetivo.longitude];
+    setPercursoActivo([origem, destino]);
+    setEstimativaPercurso(null);
+    const controller = new AbortController();
+    const url = `https://router.project-osrm.org/route/v1/driving/${veiculoEmSeguimento.longitude},${veiculoEmSeguimento.latitude};${objetivo.longitude},${objetivo.latitude}?overview=full&geometries=geojson`;
+    fetch(url, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Serviço de rotas indisponível");
+        return response.json();
+      })
+      .then((data: { routes?: { distance?: number; duration?: number; geometry?: { coordinates?: [number, number][] } }[] }) => {
+        const route = data.routes?.[0];
+        const coords = route?.geometry?.coordinates;
+        if (coords && coords.length > 1) setPercursoActivo(coords.map(([lng, lat]): Ponto => [lat, lng]));
+        if (typeof route?.distance === "number" && typeof route.duration === "number") {
+          setEstimativaPercurso({ distanciaMetros: route.distance, duracaoSegundos: route.duration });
+        }
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        // O fallback directo já foi colocado no estado acima.
+        setEstimativaPercurso(null);
+      });
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    objetivoVeiculoId,
+    veiculoEmSeguimento?.id,
+    origemRotaLat,
+    origemRotaLng,
+    objetivo?.latitude,
+    objetivo?.longitude,
+  ]);
 
   return (
+    <div className="space-y-2">
     <div className="overflow-hidden rounded-lg border" style={{ height: altura }}>
       <MapContainer
         center={centro}
@@ -122,7 +175,10 @@ export default function MapaVeiculos({
         <AjustarVista pontos={pontos} />
         {onCliqueMapa && <CliqueMapa onClique={onCliqueMapa} />}
         {tracado && pontosParagens.length > 1 && (
-          <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.7 }} />
+          <Polyline positions={pontosParagens} pathOptions={{ color: "hsl(217 60% 35%)", weight: 3, opacity: 0.55, dashArray: "7 6" }} />
+        )}
+        {objetivoVeiculoId && percursoActivo.length > 1 && (
+          <Polyline positions={percursoActivo} pathOptions={{ color: "hsl(142 72% 35%)", weight: 5, opacity: 0.9 }} />
         )}
         {ps.map((p) => (
           <Marker key={p.id} position={[p.latitude, p.longitude]} icon={iconeParagem(p.ordem, p.destaque)}>
@@ -147,6 +203,15 @@ export default function MapaVeiculos({
           </Marker>
         ))}
       </MapContainer>
+    </div>
+    {objetivo && objetivoVeiculoId && (
+      <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">Próxima paragem: {objetivo.nome}</span>
+        {estimativaPercurso
+          ? ` · ${(estimativaPercurso.distanciaMetros / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })} km · cerca de ${Math.max(1, Math.round(estimativaPercurso.duracaoSegundos / 60))} min, estimativa sem trânsito em tempo real`
+          : " · percurso rodoviário aproximado"}
+      </div>
+    )}
     </div>
   );
 }
