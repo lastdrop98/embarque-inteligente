@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,32 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
   const qc = useQueryClient();
   const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date());
   const [dataViagem, setDataViagem] = useState(hoje);
+
+  // Mantém a lista de horários e o bloqueio de reserva sincronizados com alterações
+  // feitas pelo operador noutro painel.
+  useEffect(() => {
+    const canalRotas = supabase
+      .channel("rotas-passageiro-" + passageiro.id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "rotas" }, () => {
+        qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "paragens" }, () => {
+        qc.invalidateQueries({ queryKey: ["rotas-disponiveis-passageiro"] });
+      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "viagens_passageiro", filter: `passageiro_id=eq.${passageiro.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["viagens-ativas-passageiro", passageiro.id] });
+          qc.invalidateQueries({ queryKey: ["minhas-viagens", passageiro.id] });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canalRotas);
+    };
+  }, [passageiro.id, qc]);
   const [origem, setOrigem] = useState("");
   const [destino, setDestino] = useState("");
   const [rotaId, setRotaId] = useState("");
