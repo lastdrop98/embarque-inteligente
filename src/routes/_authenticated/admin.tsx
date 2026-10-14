@@ -147,7 +147,8 @@ function AdminPage() {
 
       <Kpis />
 
-      <MapaGeral />\n      <MapaRotasActivas />
+      <MapaGeral />
+      <MapaRotasActivas />
 
       <Utilizadores
         utilizadorAtualId={sessao.user.id}
