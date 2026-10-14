@@ -356,7 +356,7 @@ export default function MapaVeiculos({
         <span className="font-medium text-foreground">Próxima paragem: {objetivo.nome}</span>
         {estimativaPercurso
           ? ` · ${(estimativaPercurso.distanciaMetros / 1000).toLocaleString("pt-PT", { maximumFractionDigits: 1 })} km · cerca de ${Math.max(1, Math.round(estimativaPercurso.duracaoSegundos / 60))} min, estimativa sem trânsito em tempo real`
-          : " · percurso rodoviário aproximado"}
+          : " · percurso rodoviário aproximado; sem dados de trânsito em tempo real"}
       </div>
     )}
     </div>
