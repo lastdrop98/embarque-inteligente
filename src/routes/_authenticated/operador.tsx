@@ -106,7 +106,7 @@ function Veiculos() {
         : await supabase.from("veiculos").insert({ ...campos, estado: "disponivel" });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success(editId ? "Veículo actualizado" : "Veículo criado"); limpar(); invalidate("veiculos", "rotas"); },
+    onSuccess: () => { toast.success(editId ? "Veículo actualizado" : "Veículo criado"); limpar(); invalidate("veiculos", "rotas", "rotas-disponiveis-passageiro"); },
     onError: (e) => toast.error(mensagemErro(e)),
   });
 
@@ -436,7 +436,7 @@ function Rotas() {
     onSuccess: () => {
       toast.success("Rota criada");
       limparFormularioRota();
-      invalidate("rotas");
+      invalidate("rotas", "rotas-disponiveis-passageiro");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -632,7 +632,7 @@ function RotaCard({ rota }: { rota: RotaRow }) {
     },
     onSuccess: () => {
       toast.success("Estado da rota actualizado");
-      invalidate("rotas", "reconciliacao", "viagens");
+      invalidate("rotas", "reconciliacao", "viagens", "rotas-disponiveis-passageiro");
     },
     onError: (e: Error) => toast.error(e.message),
   });
