@@ -39,7 +39,7 @@ function OperadorPage() {
         <p className="text-sm text-muted-foreground">Rotas, paragens, passageiros e bilhetes QR.</p>
       </div>
       <Tabs defaultValue="rotas">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
+        <TabsList aria-label="Secções do Painel do Operador" className="operator-section-tabs grid w-full grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="rotas">Rotas</TabsTrigger>
           <TabsTrigger value="veiculos">Veículos</TabsTrigger>
