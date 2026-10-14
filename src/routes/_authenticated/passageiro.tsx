@@ -168,7 +168,12 @@ function Conteudo({ userId }: { userId: string }) {
     emitidoEm: v.created_at,
   });
 
-  const proximaComVeiculo = activas.find((v) => v.rotas?.veiculos?.latitude != null);
+  const proximaComVeiculo = activas.find(
+    (v) =>
+      (v.estado === "pendente" || v.estado === "a_bordo") &&
+      v.rotas?.veiculos?.latitude != null &&
+      v.rotas.veiculos.longitude != null,
+  );
 
   if (!passageiro) {
     return (
@@ -192,9 +197,19 @@ function Conteudo({ userId }: { userId: string }) {
       {proximaComVeiculo?.rotas?.veiculos && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">A aproximar-se</CardTitle>
+            <CardTitle className="text-base">
+              {proximaComVeiculo.estado === "pendente" ? "Autocarro a caminho do ponto de partida" : "Viagem em curso — a caminho do desembarque"}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {proximaComVeiculo.estado === "pendente"
+                ? `A acompanhar o autocarro até ${proximaComVeiculo.embarque?.nome ?? "ao ponto de partida"}.`
+                : `A acompanhar o autocarro até ${proximaComVeiculo.desembarque?.nome ?? "ao ponto de desembarque"}.`}
+              {proximaComVeiculo.rotas.veiculos.posicao_updated_at
+                ? ` Última posição GPS: ${new Date(proximaComVeiculo.rotas.veiculos.posicao_updated_at).toLocaleTimeString("pt-PT")}.`
+                : " A aguardar a primeira posição GPS do motorista."}
+            </p>
             <MapaVeiculos
               veiculos={[proximaComVeiculo.rotas.veiculos]}
               paragens={[
@@ -202,6 +217,7 @@ function Conteudo({ userId }: { userId: string }) {
                 ...(proximaComVeiculo.desembarque ? [{ ...proximaComVeiculo.desembarque, ordem: 2 }] : []),
               ]}
               tracado
+              objetivoVeiculoId={proximaComVeiculo.estado === "pendente" ? proximaComVeiculo.embarque?.id : proximaComVeiculo.desembarque?.id}
               altura={300}
             />
           </CardContent>
