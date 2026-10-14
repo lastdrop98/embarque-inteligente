@@ -35,9 +35,9 @@ function iconeVeiculo(estado?: string | null) {
   const cor = CORES[estado ?? "inactivo"] ?? CORES["inactivo"];
   return L.divIcon({
     className: "",
-    html: `<div style="background:${cor};width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px ${cor}55"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<div style="background:#fff;width:30px;height:30px;border-radius:10px;border:2px solid ${cor};box-shadow:0 2px 8px #0003;display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1">🚌</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
   });
 }
 
@@ -109,6 +109,9 @@ export default function MapaVeiculos({
   const veiculoEmSeguimento = vs[0];
   const objetivo = ps.find((p) => p.id === objetivoVeiculoId);
   const [percursoActivo, setPercursoActivo] = useState<Ponto[]>([]);
+  // Recalcula a rota rodoviária a cada ~100 m, sem sobrecarregar o serviço público de rotas.
+  const origemRotaLat = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.latitude * 1000) / 1000 : null;
+  const origemRotaLng = veiculoEmSeguimento ? Math.round(veiculoEmSeguimento.longitude * 1000) / 1000 : null;
 
   // Desenha o percurso rodoviário entre a posição GPS actual e a próxima paragem.
   // Se o serviço de rotas estiver indisponível, mantém uma linha directa como fallback.
@@ -139,8 +142,8 @@ export default function MapaVeiculos({
   }, [
     objetivoVeiculoId,
     veiculoEmSeguimento?.id,
-    veiculoEmSeguimento?.latitude,
-    veiculoEmSeguimento?.longitude,
+    origemRotaLat,
+    origemRotaLng,
     objetivo?.latitude,
     objetivo?.longitude,
   ]);
