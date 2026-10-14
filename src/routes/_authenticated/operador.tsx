@@ -94,7 +94,13 @@ function Veiculos() {
 
   const guardar = useMutation({
     mutationFn: async () => {
-      const campos = { nome: juntarMarcaModelo(marca, modelo), matricula: matricula.trim(), lugares };
+      const campos = {
+        nome: juntarMarcaModelo(marca, modelo),
+        marca: marca.trim(),
+        modelo: modelo.trim(),
+        matricula: matricula.trim(),
+        lugares,
+      };
       const { error } = editId
         ? await supabase.from("veiculos").update(campos).eq("id", editId)
         : await supabase.from("veiculos").insert({ ...campos, estado: "disponivel" });
@@ -145,7 +151,8 @@ function Veiculos() {
         <CardHeader><CardTitle>Veículos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((v) => {
-            const mm = separarMarcaModelo(v.nome);
+            const legado = separarMarcaModelo(v.nome);
+            const mm = { marca: v.marca?.trim() || legado.marca, modelo: v.modelo?.trim() || legado.modelo };
             return (
               <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                 <span><span className="font-medium">{mm.marca}</span> {mm.modelo} <span className="text-muted-foreground">{v.matricula}</span></span>
@@ -301,7 +308,7 @@ function Rotas() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pontos_predefinidos")
-        .select("id, nome")
+        .select("id, nome, latitude, longitude, coordenadas_verificadas")
         .eq("activo", true)
         .order("nome");
       if (error) throw error;
@@ -355,6 +362,11 @@ function Rotas() {
       if (paragemId && (paragemId === partidaId || paragemId === chegadaId)) {
         throw new Error("A paragem intermédia deve ser diferente da partida e da chegada.");
       }
+      const idsPontos = [partidaId, ...(paragemId ? [paragemId] : []), chegadaId];
+      const pontosEscolhidos = idsPontos.map((id) => pontos?.find((p) => p.id === id));
+      if (pontosEscolhidos.some((p) => !p || p.latitude === null || p.longitude === null || !p.coordenadas_verificadas)) {
+        throw new Error("Um ou mais pontos ainda não têm coordenadas verificadas. Peça ao administrador para posicionar os pontos no mapa.");
+      }
 
       const { data: rotaCriada, error } = await supabase.rpc("criar_rota_operacional", semIndefinidos({
         _nome: nome.trim() || undefined,
@@ -371,6 +383,23 @@ function Rotas() {
       if (!rotaCriada) throw new Error("A rota foi criada sem devolver o identificador.");
       const { error: erroData } = await supabase.from("rotas").update({ data_viagem: dataViagem }).eq("id", rotaCriada);
       if (erroData) throw erroData;
+
+      const { data: paragensCriadas, error: erroParagens } = await supabase
+        .from("paragens")
+        .select("id, ordem")
+        .eq("rota_id", rotaCriada)
+        .order("ordem");
+      if (erroParagens) throw erroParagens;
+      for (const paragem of paragensCriadas ?? []) {
+        const ponto = pontosEscolhidos[paragem.ordem - 1];
+        if (!ponto || ponto.latitude === null || ponto.longitude === null) continue;
+        const { error: erroCoordenadas } = await supabase
+          .from("paragens")
+          .update({ latitude: ponto.latitude, longitude: ponto.longitude })
+          .eq("id", paragem.id);
+        if (erroCoordenadas) throw erroCoordenadas;
+      }
+
       if (paragemId && inicio && fim) {
         const minutos = (valor: string) => Number(valor.slice(0, 2)) * 60 + Number(valor.slice(3, 5));
         const inicioMin = minutos(inicio);
