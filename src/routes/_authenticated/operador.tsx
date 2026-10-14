@@ -143,7 +143,7 @@ function Veiculos() {
           <div className="space-y-2"><Label>Lugares</Label><Input type="number" min={1} value={lugares} onChange={(e) => setLugares(Number(e.target.value))} /></div>
           <div className="flex flex-wrap gap-2">
             <Button disabled={!valido || guardar.isPending} onClick={() => guardar.mutate()}>{editId ? "Guardar" : "Criar veículo"}</Button>
-            {editId && <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />Cancelar</Button>}
+            <Button variant="ghost" onClick={limpar}><X className="mr-1 h-4 w-4" />{editId ? "Cancelar edição" : "Limpar campos"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -354,6 +354,19 @@ function Rotas() {
   const [previstos, setPrevistos] = useState("");
   const [dataViagem, setDataViagem] = useState(() => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date()));
 
+  const limparFormularioRota = () => {
+    setNome("");
+    setVeiculoId("");
+    setMotoristaId("");
+    setPartidaId("");
+    setChegadaId("");
+    setParagemId("");
+    setInicio("");
+    setFim("");
+    setPrevistos("");
+    setDataViagem(new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Maputo" }).format(new Date()));
+  };
+
   const criar = useMutation({
     mutationFn: async () => {
       if (!dataViagem) throw new Error("Defina a data da viagem.");
@@ -422,13 +435,7 @@ function Rotas() {
     },
     onSuccess: () => {
       toast.success("Rota criada");
-      setNome("");
-      setPartidaId("");
-      setChegadaId("");
-      setParagemId("");
-      setInicio("");
-      setFim("");
-      setPrevistos("");
+      limparFormularioRota();
       invalidate("rotas");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -494,10 +501,11 @@ function Rotas() {
             <Label>Passageiros previstos</Label>
             <Input type="number" min={0} value={previstos} onChange={(e) => setPrevistos(e.target.value)} />
           </div>
-          <div className="flex items-end">
+          <div className="flex flex-wrap items-end gap-2">
             <Button disabled={!partidaId || !chegadaId || criar.isPending} onClick={() => criar.mutate()}>
               {criar.isPending ? "A criar..." : "Criar rota"}
             </Button>
+            <Button variant="ghost" disabled={criar.isPending} onClick={limparFormularioRota}><X className="mr-1 h-4 w-4" />Cancelar / limpar</Button>
           </div>
         </CardContent>
       </Card>
@@ -883,6 +891,13 @@ function Viagens() {
   const rota = rotas?.find((r) => r.id === rotaId);
   const paragens = [...(rota?.paragens ?? [])].sort((a, b) => a.ordem - b.ordem);
 
+  const limparAtribuicao = () => {
+    setRotaId("");
+    setPassageiroId("");
+    setEmbarqueId("");
+    setDesembarqueId("");
+  };
+
   const { data: viagens } = useQuery({
     queryKey: ["viagens"],
     queryFn: async () => {
@@ -951,10 +966,11 @@ function Viagens() {
               {paragens.map((p) => <option key={p.id} value={p.id}>{p.ordem}. {p.nome}</option>)}
             </select>
           </div>
-          <div className="md:col-span-4">
+          <div className="flex flex-wrap gap-2 md:col-span-4">
             <Button disabled={!rotaId || !passageiroId || !embarqueId || atribuir.isPending} onClick={() => atribuir.mutate()}>
               Gerar bilhete QR
             </Button>
+            <Button variant="ghost" disabled={atribuir.isPending} onClick={limparAtribuicao}><X className="mr-1 h-4 w-4" />Cancelar / limpar</Button>
           </div>
         </CardContent>
       </Card>
