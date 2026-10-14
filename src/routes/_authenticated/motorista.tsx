@@ -359,7 +359,7 @@ function MotoristaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="animate-premium-in relative overflow-hidden rounded-2xl bg-cover bg-center px-5 py-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-7" style={{ backgroundImage: "linear-gradient(100deg, rgba(8,28,54,.92), rgba(8,28,54,.48)), url(https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80)", display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="animate-premium-in relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-cover bg-center px-5 py-6 text-white shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-7" style={{ backgroundImage: "linear-gradient(100deg, rgba(8,28,54,.92), rgba(8,28,54,.48)), url(https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1600&q=80)" }}>
         <div>
           <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/20 px-3 py-1 text-[11px] font-medium text-white shadow-sm backdrop-blur">
             <Wifi className="h-3.5 w-3.5 text-emerald-600" />
