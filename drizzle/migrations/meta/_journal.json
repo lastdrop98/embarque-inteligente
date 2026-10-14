@@ -85,6 +85,13 @@
       "when": 1791897000000,
       "tag": "0011_reconciliar_avaliacoes_cloud",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791972000000,
+      "tag": "0012_pontos_coordenadas_veiculos_marca_modelo",
+      "breakpoints": true
     }
   ]
 }
