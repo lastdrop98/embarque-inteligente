@@ -23,7 +23,7 @@ export function MapaRotasActivas() {
       const { data, error } = await supabase
         .from("rotas")
         .select("id, nome, estado, veiculo_id, veiculos(id, nome, latitude, longitude, estado, posicao_updated_at, lugares), paragens(id, nome, ordem, latitude, longitude)")
-        .in("estado", ["embarque_aberto", "embarque_fechado", "em_curso"])
+        .in("estado", ["agendada", "embarque_aberto", "embarque_fechado", "em_curso"])
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as RotaActiva[];
