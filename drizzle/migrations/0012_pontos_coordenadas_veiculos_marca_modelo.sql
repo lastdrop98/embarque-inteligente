@@ -39,3 +39,15 @@ BEGIN
       CHECK ((latitude IS NULL AND longitude IS NULL) OR (latitude IS NOT NULL AND longitude IS NOT NULL));
   END IF;
 END $$;
+
+-- Backfill only exact name matches to points already explicitly verified by an administrator.
+-- Never infer coordinates from the point name or approximate location.
+UPDATE public.paragens AS paragem
+SET latitude = ponto.latitude,
+    longitude = ponto.longitude
+FROM public.pontos_predefinidos AS ponto
+WHERE lower(trim(paragem.nome)) = lower(trim(ponto.nome))
+  AND ponto.coordenadas_verificadas = true
+  AND ponto.latitude IS NOT NULL
+  AND ponto.longitude IS NOT NULL
+  AND (paragem.latitude IS NULL OR paragem.longitude IS NULL);
