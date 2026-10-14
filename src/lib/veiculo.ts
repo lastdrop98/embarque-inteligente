@@ -9,10 +9,8 @@ export function separarMarcaModelo(nome: string | null | undefined) {
   const limpo = (nome ?? "").trim().replace(/\s+/g, " ");
   const separador = limpo.split(" — ");
   if (separador.length >= 2) return { marca: separador.shift() ?? "", modelo: separador.join(" — ") };
-  // Compatibilidade com nomes legados sem separador: divisão heurística apenas para edição.
-  const i = limpo.indexOf(" ");
-  if (i < 0) return { marca: limpo, modelo: "" };
-  return { marca: limpo.slice(0, i), modelo: limpo.slice(i + 1) };
+  // Legacy names cannot be split safely: leave the make empty so the operator must review them.
+  return { marca: "", modelo: limpo };
 }
 
 /** Traduz erros da base de dados para mensagens legíveis em português. */
