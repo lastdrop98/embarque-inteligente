@@ -13,7 +13,7 @@ import { PedidosOperador } from "@/components/PedidosOperador";
 import { toast } from "sonner";
 import { Pencil, Trash2, X, Save } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
-import { juntarMarcaModelo, separarMarcaModelo, mensagemErro } from "@/lib/veiculo";
+import { juntarMarcaModelo, mensagemErro } from "@/lib/veiculo";
 
 export const Route = createFileRoute("/_authenticated/operador")({
   head: () => ({
@@ -151,17 +151,22 @@ function Veiculos() {
         <CardHeader><CardTitle>Veículos</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {data?.length ? data.map((v) => {
-            const legado = separarMarcaModelo(v.nome);
-            const mm = { marca: v.marca?.trim() || legado.marca, modelo: v.modelo?.trim() || legado.modelo };
+            const marca = v.marca?.trim() ?? "";
+            const modelo = v.modelo?.trim() ?? "";
+            const camposRever = !marca || !modelo;
             return (
               <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-                <span><span className="font-medium">{mm.marca}</span> {mm.modelo} <span className="text-muted-foreground">{v.matricula}</span></span>
+                <span>
+                  {marca && modelo ? <><span className="font-medium">{marca}</span> {modelo}</> : <span className="font-medium">{v.nome}</span>}
+                  <span className="ml-2 text-muted-foreground">{v.matricula}</span>
+                  {camposRever && <Badge variant="outline" className="ml-2">Rever marca/modelo</Badge>}
+                </span>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="secondary">{v.lugares} lugares</Badge>
                   <select className="h-9 rounded-md border bg-background px-2 text-xs" value={v.estado} onChange={(e) => mudarEstado.mutate({ id: v.id, estado: e.target.value })}>
                     {Object.entries(ESTADOS_VEICULO).map(([valor, rotulo]) => <option key={valor} value={valor}>{rotulo}</option>)}
                   </select>
-                  <Button size="sm" variant="outline" onClick={() => { setEditId(v.id); setMarca(mm.marca); setModelo(mm.modelo); setMatricula(v.matricula); setLugares(v.lugares); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
+                  <Button size="sm" variant="outline" onClick={() => { setEditId(v.id); setMarca(v.marca ?? ""); setModelo(v.modelo ?? ""); setMatricula(v.matricula); setLugares(v.lugares); }}><Pencil className="mr-1 h-4 w-4" />Editar</Button>
                   <Button size="sm" variant="destructive" disabled={eliminar.isPending} onClick={() => { if (window.confirm(`Eliminar o veículo ${v.matricula}? Se tiver rotas associadas, a eliminação será recusada — use o estado "inactivo".`)) eliminar.mutate(v.id); }}><Trash2 className="mr-1 h-4 w-4" />Eliminar</Button>
                 </div>
               </div>
