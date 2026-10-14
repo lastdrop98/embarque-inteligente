@@ -75,7 +75,7 @@ function CliqueMapa({ onClique }: { onClique: (lat: number, lng: number) => void
   return null;
 }
 
-type ResultadoPesquisa = { place_id: string; display_name: string; lat: string; lon: string; origem: "guardado" | "mapa"; verificado?: boolean };
+type ResultadoPesquisa = { place_id: string; display_name: string; lat: string | null; lon: string | null; origem: "guardado" | "mapa"; verificado?: boolean };
 
 function GuardarMapa({ onReady }: { onReady: (map: LeafletMap) => void }) {
   const map = useMap();
@@ -166,12 +166,11 @@ export default function MapaVeiculos({
       if (erroGuardados) console.warn("[mapa] não foi possível pesquisar pontos guardados:", erroGuardados.message);
 
       const locaisGuardados: ResultadoPesquisa[] = (guardados ?? [])
-        .filter((p) => p.latitude != null && p.longitude != null)
         .map((p) => ({
           place_id: `guardado-${p.id}`,
           display_name: p.nome,
-          lat: String(p.latitude),
-          lon: String(p.longitude),
+          lat: p.latitude == null ? null : String(p.latitude),
+          lon: p.longitude == null ? null : String(p.longitude),
           origem: "guardado" as const,
           verificado: Boolean(p.coordenadas_verificadas),
         }));
@@ -203,10 +202,17 @@ export default function MapaVeiculos({
     }
   };
   const escolherLocal = (local: ResultadoPesquisa) => {
+     setPesquisa(local.display_name);
+    setResultadosPesquisa([]);
+    if (local.lat == null || local.lon == null || !Number.isFinite(Number(local.lat)) || !Number.isFinite(Number(local.lon))) {
+      setLocalPesquisado(null);
+      setMensagemPesquisa(local.origem === "guardado"
+        ? `O ponto guardado “${local.display_name}” não tem coordenadas completas. Edite o ponto e indique a posição no mapa antes de o usar numa rota.`
+        : "Este resultado não tem coordenadas válidas. Pesquise outro local.");
+      return;
+    }
     const ponto: Ponto = [Number(local.lat), Number(local.lon)];
     setLocalPesquisado(ponto);
-    setPesquisa(local.display_name);
-    setResultadosPesquisa([]);
     setMensagemPesquisa(local.origem === "guardado" ? (local.verificado ? "Ponto guardado verificado." : "Ponto guardado ainda não verificado.") : "Local encontrado no mapa; confirme a posição antes de o usar numa rota.");
     mapa?.setView(ponto, 16, { animate: true });
   };
