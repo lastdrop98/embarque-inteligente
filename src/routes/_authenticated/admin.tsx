@@ -1076,7 +1076,7 @@ function PontosPredefinidos() {
       if (error) throw error;
       const { error: erroParagens } = await supabase
         .from("paragens")
-        .update({ nome, latitude: lat, longitude: lng })
+        .update({ latitude: lat, longitude: lng })
         .eq("nome", nomeAnterior ?? nome);
       return { erroSincronizarParagens: erroParagens?.message ?? null };
     },
