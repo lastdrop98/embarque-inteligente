@@ -1070,6 +1070,17 @@ function PontosPredefinidos() {
         coordenadas_verificadas: true,
       };
       const nomeAnterior = editId ? pontos?.find((p) => p.id === editId)?.nome : null;
+      if (editId && nomeAnterior && nomeAnterior !== nome) {
+        const { data: paragensComNomeAntigo, error: erroVerificarNome } = await supabase
+          .from("paragens")
+          .select("id")
+          .eq("nome", nomeAnterior)
+          .limit(1);
+        if (erroVerificarNome) throw erroVerificarNome;
+        if (paragensComNomeAntigo?.length) {
+          throw new Error("Este ponto já aparece em rotas ou histórico. Para preservar os registos antigos, não altere o nome; actualize as coordenadas ou desactive o ponto.");
+        }
+      }
       const { error } = editId
         ? await supabase.from("pontos_predefinidos").update(campos).eq("id", editId)
         : await supabase.from("pontos_predefinidos").insert({ ...campos, activo: true });
