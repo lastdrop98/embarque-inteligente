@@ -1041,12 +1041,14 @@ function PontosPredefinidos() {
   const [novoPonto, setNovoPonto] = useState("");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
+  const [localizacaoConfirmada, setLocalizacaoConfirmada] = useState(false);
 
   const limpar = () => {
     setEditId(null);
     setNovoPonto("");
     setLatitude("");
     setLongitude("");
+    setLocalizacaoConfirmada(false);
   };
 
   const guardar = useMutation({
@@ -1055,7 +1057,7 @@ function PontosPredefinidos() {
       const lat = Number(latitude);
       const lng = Number(longitude);
       if (!nome) throw new Error("Indica o nome do ponto.");
-      if (!latitude.trim() || !longitude.trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      if (!localizacaoConfirmada || !latitude.trim() || !longitude.trim() || !Number.isFinite(lat) || !Number.isFinite(lng)) {
         throw new Error("Escolhe a localização do ponto no mapa antes de guardar.");
       }
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
@@ -1108,7 +1110,7 @@ function PontosPredefinidos() {
 
   const lat = latitude.trim() ? Number(latitude) : null;
   const lng = longitude.trim() ? Number(longitude) : null;
-  const temCoordenadas = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  const temCoordenadas = localizacaoConfirmada && lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 
   return (
     <Card>
@@ -1127,11 +1129,11 @@ function PontosPredefinidos() {
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-2">
               <label className="text-sm font-medium">Latitude</label>
-              <Input inputMode="decimal" type="number" min={-90} max={90} step="any" placeholder="-25.9655" value={latitude} onChange={(e) => setLatitude(e.target.value)} />
+              <Input inputMode="decimal" type="number" min={-90} max={90} step="any" placeholder="-25.9655" value={latitude} onChange={(e) => { setLatitude(e.target.value); setLocalizacaoConfirmada(false); }} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Longitude</label>
-              <Input inputMode="decimal" type="number" min={-180} max={180} step="any" placeholder="32.5832" value={longitude} onChange={(e) => setLongitude(e.target.value)} />
+              <Input inputMode="decimal" type="number" min={-180} max={180} step="any" placeholder="32.5832" value={longitude} onChange={(e) => { setLongitude(e.target.value); setLocalizacaoConfirmada(false); }} />
             </div>
           </div>
         </div>
@@ -1144,6 +1146,7 @@ function PontosPredefinidos() {
             onCliqueMapa={(latClicada, lngClicada) => {
               setLatitude(latClicada.toFixed(6));
               setLongitude(lngClicada.toFixed(6));
+              setLocalizacaoConfirmada(true);
             }}
           />
           <p className="text-xs text-muted-foreground">
@@ -1174,6 +1177,7 @@ function PontosPredefinidos() {
                   setNovoPonto(p.nome);
                   setLatitude(p.latitude === null ? "" : String(p.latitude));
                   setLongitude(p.longitude === null ? "" : String(p.longitude));
+                  setLocalizacaoConfirmada(Boolean(p.coordenadas_verificadas && p.latitude !== null && p.longitude !== null));
                 }}>Editar / posicionar</Button>
                 <Button size="sm" variant="outline" disabled={alternar.isPending} onClick={() => alternar.mutate({ id: p.id, activo: !p.activo })}>
                   {p.activo ? "Desactivar" : "Activar"}
