@@ -368,7 +368,7 @@ function Layout() {
               <span className="truncate text-white">PickApp Mobility</span>
             </Link>
 
-            <nav className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 text-sm md:flex">
+            <nav aria-label="Navegação principal" className="hidden min-w-0 flex-1 flex-wrap items-center gap-1 text-sm md:flex">
               {links.map((l) => (
                 <NavLink key={l.to} to={l.to}>
                   {l.label}
@@ -413,6 +413,7 @@ function Layout() {
               onClick={() => setMenuMobileAberto((v) => !v)}
               aria-label={menuMobileAberto ? "Fechar menu" : "Abrir menu"}
               aria-expanded={menuMobileAberto}
+              aria-controls="navegacao-mobile"
             >
               {menuMobileAberto ? (
                 <X className="h-5 w-5" />
@@ -454,7 +455,7 @@ function Layout() {
 
           {menuMobileAberto && (
             <div className="mt-2 border-t border-sidebar-border pt-2 md:hidden">
-              <nav className="grid gap-1">
+              <nav id="navegacao-mobile" aria-label="Navegação principal" className="mobile-panel-nav grid gap-1">
                 {links.map((l) => (
                   <NavLink key={l.to} to={l.to} onNavigate={fecharMenuMobile}>
                     {l.label}

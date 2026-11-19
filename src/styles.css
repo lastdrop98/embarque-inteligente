@@ -403,6 +403,23 @@ div[id*="lovable-badge"] {
   }
 }
 
+/* Alvos de toque consistentes em ecrãs móveis. */
+@media (max-width: 767px) {
+  button[data-pickapp-button] {
+    min-height: 2.75rem;
+  }
+
+  button[data-pickapp-button][class~="w-9"] {
+    min-width: 2.75rem;
+  }
+
+  .mobile-panel-nav a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+  }
+}
+
 /* A navegação do operador mantém uma única fila com scroll visível no mobile. */
 @media (max-width: 767px) {
   .operator-section-tabs[role="tablist"] {

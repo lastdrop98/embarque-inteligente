@@ -113,6 +113,17 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
   });
 
   const rotaSelecionada = rotasDisponiveis?.find((r) => r.id === rotaId);
+  const dataEscolhida = dataViagem >= hoje;
+  const percursoEscolhido = Boolean(origem && destino && origem !== destino);
+  const etapaReserva = !dataEscolhida ? 0 : !percursoEscolhido ? 1 : !rotaSelecionada ? 2 : 3;
+  const estadoEtapas = [dataEscolhida, percursoEscolhido, Boolean(rotaSelecionada)];
+  const mensagemEtapa = etapaReserva === 0
+    ? "Comece por escolher a data da viagem."
+    : etapaReserva === 1
+      ? "Agora escolha a origem e o destino."
+      : etapaReserva === 2
+        ? "Escolha uma viagem disponível para continuar."
+        : "Tudo pronto: confirme a viagem para emitir o bilhete.";
 
   const { data: pedidos } = useQuery({
     queryKey: ["meus-pedidos-transporte", passageiro.id],
@@ -236,20 +247,37 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
           </p>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="md:col-span-3 space-y-3" aria-label="Progresso da reserva">
+            <div className="grid grid-cols-3 gap-2" role="list" aria-label="Etapas da reserva">
+              {["Data", "Percurso", "Viagem"].map((etapa, index) => {
+                const concluida = estadoEtapas[index] ?? false;
+                const atual = etapaReserva === index;
+                return (
+                  <div key={etapa} role="listitem" className="min-w-0">
+                    <div className={`h-1.5 rounded-full ${concluida ? "bg-primary" : atual ? "bg-primary/50" : "bg-muted"}`} />
+                    <p className={`mt-1.5 truncate text-xs ${concluida || atual ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                      {index + 1}. {etapa}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{mensagemEtapa}</p>
+          </div>
           <div className="space-y-2">
             <Label>Data da viagem</Label>
             <Input type="date" min={hoje} value={dataViagem} onChange={(e) => { setDataViagem(e.target.value); setRotaId(""); }} />
           </div>
           <div className="space-y-2">
             <Label>Ponto de origem</Label>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={origem} onChange={(e) => { setOrigem(e.target.value); setRotaId(""); }}>
+            <select aria-label="Ponto de origem" className="h-11 w-full rounded-md border bg-background px-3 text-sm" value={origem} onChange={(e) => { setOrigem(e.target.value); setRotaId(""); }}>
               <option value="">Escolha o ponto</option>
               {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
             </select>
           </div>
           <div className="space-y-2">
             <Label>Destino</Label>
-            <select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={destino} onChange={(e) => { setDestino(e.target.value); setRotaId(""); }}>
+            <select aria-label="Destino" className="h-11 w-full rounded-md border bg-background px-3 text-sm" value={destino} onChange={(e) => { setDestino(e.target.value); setRotaId(""); }}>
               <option value="">Escolha o destino</option>
               {pontos?.map((p) => <option key={p.id} value={p.nome}>{p.nome}</option>)}
             </select>
@@ -271,7 +299,8 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
                       type="button"
                       disabled={rota.embarqueFechado}
                       onClick={() => setRotaId(rota.id)}
-                      className={`w-full rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${rotaId === rota.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-primary/50"}`}
+                      aria-pressed={rotaId === rota.id}
+                      className={`min-h-11 w-full rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${rotaId === rota.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-primary/50"}`}
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-semibold">{rota.nome}</span>
@@ -306,7 +335,7 @@ export function PassageiroPedidos({ passageiro, userId }: { passageiro: Passagei
               <p role="status" className="text-xs text-muted-foreground">{motivoBloqueio}</p>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
+              <Button type="button" className="min-h-11 w-full sm:w-auto" disabled={!podeEnviar} onClick={() => confirmarViagem.mutate()}>
                 {confirmarViagem.isPending ? "A confirmar..." : "Confirmar viagem"}
               </Button>
               <Button type="button" variant="ghost" disabled={confirmarViagem.isPending} onClick={() => { setOrigem(""); setDestino(""); setRotaId(""); setDataViagem(hoje); }}>
