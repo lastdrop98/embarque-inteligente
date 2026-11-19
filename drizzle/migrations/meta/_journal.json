@@ -92,6 +92,13 @@
       "when": 1791972000000,
       "tag": "0012_pontos_coordenadas_veiculos_marca_modelo",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795101816422,
+      "tag": "0013_remove_tautological_points_policy",
+      "breakpoints": true
     }
   ]
 }

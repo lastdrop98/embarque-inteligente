@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS pontos_select_authenticated ON public.pontos_predefinidos;
