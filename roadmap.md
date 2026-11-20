@@ -1,0 +1,2 @@
+- [ ] Concluir melhorias de UX mobile e aplicação consistente das leis de Fitts, Hick, Zeigarnik, Jakob e Von Restorff nos painéis existentes.
+- [ ] Verificar a experiência em telemóvel e desktop, validar build/typecheck e registar limitações reais.
